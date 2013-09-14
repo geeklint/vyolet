@@ -20,8 +20,9 @@ import os
 import platform
 import sys
 
-VERSION = (0, 0, 'dev')
+from version import Version
 
+VERSION = (0, 0, 'dev')
 
 def default_dir():
     system = platform.system()
@@ -50,6 +51,7 @@ ARGS = {
 }
 
 def main():
+    version = Version(VERSION)
     parser = argparse.ArgumentParser()
     for arg in ARGS:
         parser.add_argument(arg, **ARGS[arg])
@@ -58,11 +60,12 @@ def main():
         os.makedirs(options.rootdir)
     os.chdir(options.rootdir)
     if options.server:
-        import servermain
-        return servermain.main()
+        pass
+#         import servermain
+#         return servermain.main(version)
     else:
         import clientmain
-        return clientmain.main()
+        return clientmain.main(version)
 
 
 if __name__ == '__main__':

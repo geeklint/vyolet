@@ -15,20 +15,24 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import json
-
 import pygame
 
-from display import loop
-from utils import DataFile
+SIZES = [(640, 360), (854, 480), (1024, 576), (1280, 720), (1600, 900),
+         (1920, 1080), (2048, 1152), (2560, 1440), (2880, 1620), (3840, 2160)]
 
-SETTINGS = {
-    'winsize': 2,
-}
+def set_page(page):
+    loop.page = page
 
 
-def main(version):
-    pygame.init()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings)
-    pygame.quit()
+def loop(settings):
+
+    pygame.display.set_icon()
+    pygame.display.set_caption()
+    stop = False
+    while not stop:
+        winsize = settings['winsize']
+        screen = pygame.display.set_mode(SIZES[winsize])
+        while True:
+            page = loop.page
+            for event in pygame.event.get():
+                pass

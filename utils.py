@@ -15,20 +15,23 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import json
+import os
 
-import pygame
+class DataFile(object):
+    def __init__(self, filename, data, pickler):
+        self.filename = filename
+        self.pickler = pickler
+        if os.path.exists(filename):
+            with open(filename) as datafile:
+                self.data = pickler.load(datafile)
+        else:
+            self.data = data
 
-from display import loop
-from utils import DataFile
+    def __enter__(self):
+        return self.data
 
-SETTINGS = {
-    'winsize': 2,
-}
+    def __exit__(self, *exc):
+        with open(self.filename, 'w') as datafile:
+            self.pickler.dump(self.data, datafile)
 
 
-def main(version):
-    pygame.init()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings)
-    pygame.quit()
