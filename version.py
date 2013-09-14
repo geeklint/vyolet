@@ -52,10 +52,15 @@ LONGS = ('Atom', 'Hydrogen', 'Helium', 'Lithium', 'Beryllium', 'Boron',
 
 
 class Version(object):
-    def __init__(self, vtup):
+    def __init__(self, app_name, vtup):
+        self.app_name = app_name
         self.tuple_ = vtup
         self.long = self._makelong(vtup)
         self.short = self._makeshort(vtup)
+
+    @property
+    def title(self):
+        return ' '.join((self.app_name, self.short))
 
     def _makelong(self, vtup):
         if len(vtup) == 2:

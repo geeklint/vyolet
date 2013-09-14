@@ -22,6 +22,7 @@ import sys
 
 from version import Version
 
+APP_NAME = 'Vyolet'
 VERSION = (0, 0, 'dev')
 
 def default_dir():
@@ -51,7 +52,7 @@ ARGS = {
 }
 
 def main():
-    version = Version(VERSION)
+    version = Version(APP_NAME, VERSION)
     parser = argparse.ArgumentParser()
     for arg in ARGS:
         parser.add_argument(arg, **ARGS[arg])

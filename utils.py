@@ -16,6 +16,8 @@ This file is part of Vyolet.
 '''
 
 import os
+import shutil
+import zipfile
 
 class DataFile(object):
     def __init__(self, filename, data, pickler):
@@ -35,3 +37,19 @@ class DataFile(object):
             self.pickler.dump(self.data, datafile)
 
 
+RES_PREFIX = 'res'
+
+def ensure_res(res):
+    if not os.path.isdir(RES_PREFIX):
+        os.makedirs(RES_PREFIX)
+    dst = os.path.join(RES_PREFIX, res)
+    if not os.path.exists(dst):
+        container = os.path.dirname(__file__)
+        if os.path.isdir(container):
+            shutil.copy(os.path.join(container, dst), dst)
+        else:
+            with zipfile.ZipFile(container) as sfx:
+                with open(dst, 'wb') as dstfile:
+                    shutil.copyfileobj(sfx.open('/'.join((RES_PREFIX, res))),
+                                       dstfile)
+    return dst

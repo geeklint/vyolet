@@ -17,22 +17,46 @@ This file is part of Vyolet.
 
 import pygame
 
+from utils import ensure_res
+
 SIZES = [(640, 360), (854, 480), (1024, 576), (1280, 720), (1600, 900),
          (1920, 1080), (2048, 1152), (2560, 1440), (2880, 1620), (3840, 2160)]
 
+SET_PAGE = pygame.USEREVENT + 0
+UPDATE_SIZE = pygame.USEREVENT + 1
+
 def set_page(page):
-    loop.page = page
+    pygame.event.post(pygame.event.Event(SET_PAGE, {'page': page}))
 
 
-def loop(settings):
+def update_size():
+    pygame.event.post(pygame.event.Event(UPDATE_SIZE))
 
-    pygame.display.set_icon()
-    pygame.display.set_caption()
-    stop = False
-    while not stop:
+
+def winloop(screen, page):
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                page.input_quit()
+                pygame.quit()
+                return True
+            elif event.type == pygame.MOUSEBUTTONUP:
+                page.input_click_up(screen, event)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                page.input_click_down(screen, event)
+            elif event.type == pygame.MOUSEMOTION:
+                page.input_move(screen, event)
+            elif event.type == SET_PAGE:
+                page = event.page
+            elif event.type == UPDATE_SIZE:
+                return False
+
+
+def loop(settings, version, page):
+    pygame.display.set_icon(ensure_res('icon.png'))
+    pygame.display.set_caption(version.title)
+    while True:
         winsize = settings['winsize']
         screen = pygame.display.set_mode(SIZES[winsize])
-        while True:
-            page = loop.page
-            for event in pygame.event.get():
-                pass
+        if winloop(screen, page):
+            break

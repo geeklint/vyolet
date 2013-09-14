@@ -30,5 +30,5 @@ SETTINGS = {
 def main(version):
     pygame.init()
     with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings)
+        loop(settings, version)
     pygame.quit()
