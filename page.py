@@ -16,20 +16,23 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import json
+class Page(object):
+    def init(self, screen, size):
+        self.screen = screen
+        self.size = size
+        self.buttons = []
 
-import pygame
+    def add_button(self, button, pos):
+        pass
 
-from display import loop
-from utils import DataFile
+    def input_quit(self):
+        pass
 
-SETTINGS = {
-    'winsize': 2,
-}
+    def input_click_up(self, event):
+        pass
 
+    def input_click_down(self, event):
+        pass
 
-def main(version):
-    pygame.init()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings, version)
-    pygame.quit()
+    def input_click_move(self, event):
+        pass

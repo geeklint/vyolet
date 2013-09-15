@@ -1,5 +1,6 @@
 '''
-This file is part of Vyolet.
+    Copyright (c) 2013 Sky Leonard
+    This file is part of Vyolet.
 
     Vyolet is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +35,7 @@ def update_size():
 
 
 def winloop(screen, page):
+    page.init(screen)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -41,11 +43,11 @@ def winloop(screen, page):
                 pygame.quit()
                 return True
             elif event.type == pygame.MOUSEBUTTONUP:
-                page.input_click_up(screen, event)
+                page.input_click_up(event)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                page.input_click_down(screen, event)
+                page.input_click_down(event)
             elif event.type == pygame.MOUSEMOTION:
-                page.input_move(screen, event)
+                page.input_move(event)
             elif event.type == SET_PAGE:
                 page = event.page
             elif event.type == UPDATE_SIZE:
