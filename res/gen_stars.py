@@ -1,0 +1,50 @@
+'''
+This file is part of Vyolet.
+
+    Vyolet is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Vyolet is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
+'''
+
+import math
+import random
+
+import Image
+
+SIZE = (1600, 900)
+MAX_ATTEMPTS = 1000
+
+def dist((x1, y1), (x2, y2)):
+    return math.sqrt((y2-y1)**2 + (x2-y2)**2)
+
+
+def main():
+    points = []
+    attempts = 0
+    while True:
+        if attempts > MAX_ATTEMPTS:
+            break
+        new_point = random.randrange(SIZE[0]), random.randrange(SIZE[1])
+        for point in points:
+            if dist(point, new_point) < 5:
+                attempts += 1
+                break
+        else:
+            attempts = 0
+            points.append(new_point)
+    
+    img = Image.new(mode='1', size=SIZE)
+    
+
+
+if __name__ == '__main__':
+    main()
