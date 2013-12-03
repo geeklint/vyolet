@@ -17,12 +17,7 @@
 '''
 
 class Page(object):
-    def init(self, screen, size):
-        self.screen = screen
-        self.size = size
-        self.buttons = []
-
-    def add_button(self, button, pos):
+    def draw(self, screen, size):
         pass
 
     def input_quit(self):
@@ -34,5 +29,5 @@ class Page(object):
     def input_click_down(self, event):
         pass
 
-    def input_click_move(self, event):
+    def input_move(self, event):
         pass

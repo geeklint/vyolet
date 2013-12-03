@@ -22,14 +22,15 @@ import pygame
 
 from display import loop
 from utils import DataFile
+import mainmenu
 
 SETTINGS = {
-    'winsize': 2,
+    'fullscreen': False,
 }
 
 
 def main(version):
     pygame.init()
     with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings, version)
+        loop(settings, version, mainmenu.MainMenu())
     pygame.quit()
