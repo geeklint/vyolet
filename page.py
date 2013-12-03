@@ -16,18 +16,27 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import pygame
+
 class Page(object):
     def draw(self, screen, size):
-        pass
+        screen.fill((0xff, 0x00, 0x00))
+        pygame.display.flip()
 
     def input_quit(self):
         pass
 
-    def input_click_up(self, event):
+    def input_click_up(self, pos, button):
         pass
 
-    def input_click_down(self, event):
+    def input_click_down(self, pos, button):
         pass
 
-    def input_move(self, event):
+    def input_move(self, pos, buttons):
+        pass
+
+    def input_key_down(self, key, mod, code):
+        print 'ikd', (key, mod, code)
+
+    def input_key_up(self, key, mod):
         pass

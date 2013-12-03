@@ -31,7 +31,7 @@ def default_dir():
     if system == 'Darwin':
         return os.path.expanduser('~/Library/Vyolet')
     elif system == 'Windows':
-        return os.path.expandvars('%APPDATA%')
+        return os.path.expandvars('%APPDATA%\\Vyolet')
     else:
         return os.path.expanduser('~/.vyolet')
 
@@ -41,14 +41,14 @@ ARGS = {
         'help': 'run standalone server',
         'action': 'store_true',
     },
-    '--nogui': {
-        'help': 'do not launch server gui',
-        'action': 'store_true',
-    },
+#     '--nogui': {
+#         'help': 'do not launch server gui',
+#         'action': 'store_true',
+#     },
     '--rootdir': {
         'help': 'root directory for game files',
         'action': 'store',
-        'default': default_dir()
+        'default': default_dir(),
     },
 }
 
@@ -62,8 +62,7 @@ def main():
         os.makedirs(options.rootdir)
     os.chdir(options.rootdir)
     if options.server:
-        pass
-#         import servermain as runmain
+        import servermain as runmain
     else:
         import clientmain as runmain
     return runmain.main(version)

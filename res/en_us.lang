@@ -1,0 +1,10 @@
+{
+	"back": "Back",
+	"menu_singleplayer": "Singleplayer",
+	"menu_multiplayer": "Multiplayer",
+	"menu_settings": "Settings",
+	"menu_credits": "Credits",
+	"menu_quit": "Quit",
+	"enter_address": "Enter Address:",
+	"loading": "Loading..."
+}

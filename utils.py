@@ -54,3 +54,9 @@ def ensure_res(res):
                     shutil.copyfileobj(sfx.open('/'.join((RES_PREFIX, res))),
                                        dstfile)
     return dst
+
+
+def blit_center(surface, source, pos, *args):
+    size = source.get_size()
+    pos = (int(pos[0] - size[0] / 2), int(pos[1] - size[1] / 2))
+    surface.blit(source, pos, *args)

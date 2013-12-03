@@ -1,6 +1,5 @@
 '''
-    Copyright (c) 2013 Sky Leonard
-    This file is part of Vyolet.
+This file is part of Vyolet.
 
     Vyolet is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,27 +14,28 @@
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
-import json
-
 import pygame
 
-import mainmenu
-import text
-from display import loop
-from utils import DataFile
-
-SETTINGS = {
-    'fullscreen': False,
-    'framerate': 60,
-    'lang': 'en_us',
-}
+import colors
+import page
+import utils
+from text import text
 
 
-def main(version):
-    pygame.init()
-    page = mainmenu.MainMenu()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        text._set_lang(settings['lang'])
-        loop(settings, version, page)
-    pygame.quit()
+class LoadingPage(page.Page):
+    def __init__(self, nr):
+        self.nr = nr
+
+    def draw(self, screen, size):
+        self.screen = screen
+        self.size = size
+        self.origin = size[0] // 2, size[1] // 2
+        screen.fill(colors.BLACK)
+        font = pygame.font.SysFont('monospace', 24)
+        label = font.render(text.loading, True, colors.WHITE)
+        utils.blit_center(screen, label, self.origin)
+        pygame.display.flip()
+
+
+class GamePage(page.Page):
+    pass

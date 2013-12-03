@@ -1,6 +1,5 @@
 '''
-    Copyright (c) 2013 Sky Leonard
-    This file is part of Vyolet.
+This file is part of Vyolet.
 
     Vyolet is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -16,26 +15,10 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import json
+import events
 
-import pygame
-
-import mainmenu
-import text
-from display import loop
-from utils import DataFile
-
-SETTINGS = {
-    'fullscreen': False,
-    'framerate': 60,
-    'lang': 'en_us',
-}
-
-
-def main(version):
-    pygame.init()
-    page = mainmenu.MainMenu()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        text._set_lang(settings['lang'])
-        loop(settings, version, page)
-    pygame.quit()
+def gameloop(queue):
+    while True:
+        event, args = queue.get()
+        if event == events.QUIT:
+            return
