@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 This file is part of Vyolet.
 
@@ -16,35 +17,65 @@ This file is part of Vyolet.
 '''
 
 import math
+import os
+import pickle
 import random
+import sys
 
 import Image
 
 SIZE = (1600, 900)
-MAX_ATTEMPTS = 1000
+MAX_ATTEMPTS = 100
+SEED = 'V'
+
 
 def dist((x1, y1), (x2, y2)):
-    return math.sqrt((y2-y1)**2 + (x2-y2)**2)
+    return math.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
 
 
-def main():
+def gen_points(centiiter):
+    print 'generating points'
     points = []
-    attempts = 0
-    while True:
-        if attempts > MAX_ATTEMPTS:
-            break
-        new_point = random.randrange(SIZE[0]), random.randrange(SIZE[1])
-        for point in points:
-            if dist(point, new_point) < 5:
-                attempts += 1
-                break
-        else:
-            attempts = 0
-            points.append(new_point)
-    
-    img = Image.new(mode='1', size=SIZE)
-    
+    for i in xrange(100):
+        print '\r%d%%' % i,
+        for _ in xrange(centiiter):
+            new_point = random.randrange(SIZE[0]), random.randrange(SIZE[1])
+            for point in points:
+                if dist(point, new_point) < 5:
+                    break
+            else:
+                points.append(new_point)
+    print
+    return points
+
+
+def draw_points(centiiter, points):
+    print 'adding points to image'
+    img = Image.new(mode='L', size=SIZE)
+    for x, y in points:
+        color = random.randrange(1, 256)
+        for dx, dy in ((-1, 0), (0, -1), (0, 0), (0, 1), (1, 0)):
+            target = ((x + dx) % SIZE[0], (y + dy) % SIZE[1])
+            img.putpixel(target, color)
+    img.save('stars.%d.png' % centiiter)
+
+
+def main(argv):
+    if not argv[1:]:
+        print 'Usage: gen_stars.py [n]'
+        return 1
+    centiiter = int(sys.argv[1])
+    random.seed(SEED * centiiter)
+    pointsfilename = 'points.%d.p' % centiiter
+    if os.path.exists(pointsfilename):
+        with open(pointsfilename) as pointsfile:
+            points = pickle.load(pointsfile)
+    else:
+        points = gen_points(centiiter)
+        with open(pointsfilename, 'w') as pointsfile:
+            pickle.dump(points, pointsfile)
+    draw_points(centiiter, points)
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main(sys.argv))
