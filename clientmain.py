@@ -25,7 +25,7 @@ from utils import DataFile
 import mainmenu
 
 SETTINGS = {
-    'winsize': 2,
+    'fullscreen': False,
 }
 
 

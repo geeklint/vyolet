@@ -24,25 +24,21 @@ SIZES = [(640, 360), (854, 480), (1024, 576), (1280, 720), (1600, 900),
          (1920, 1080), (2048, 1152), (2560, 1440), (2880, 1620), (3840, 2160)]
 
 SET_PAGE = pygame.USEREVENT + 0
-UPDATE_SIZE = pygame.USEREVENT + 1
 
 def set_page(page):
     pygame.event.post(pygame.event.Event(SET_PAGE, {'page': page}))
 
 
-def update_size():
-    pygame.event.post(pygame.event.Event(UPDATE_SIZE))
-
-
-def winloop(screen, holdpage):
-    page = holdpage[0]
-    page.init(screen)
+def winloop(screen, page):
+    page.draw(screen, screen.get_size())
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 page.input_quit()
                 pygame.quit()
                 return True
+            elif event.type == pygame.VIDEORESIZE:
+                page.draw(screen, event.size)
             elif event.type == pygame.MOUSEBUTTONUP:
                 page.input_click_up(event)
             elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -50,18 +46,19 @@ def winloop(screen, holdpage):
             elif event.type == pygame.MOUSEMOTION:
                 page.input_move(event)
             elif event.type == SET_PAGE:
-                holdpage[0] = page = event.page
-                page.init(screen)
-            elif event.type == UPDATE_SIZE:
-                return False
+                page = event.page
 
 
 def loop(settings, version, page):
-    pygame.display.set_icon(ensure_res('icon.png'))
+    icon = pygame.image.load(ensure_res('icon.png'))
+    pygame.display.set_icon(icon)
     pygame.display.set_caption(version.title)
-    holdpage = [page, ]
     while True:
-        winsize = settings['winsize']
-        screen = pygame.display.set_mode(SIZES[winsize])
-        if winloop(screen, holdpage):
+        if settings['fullscreen']:
+            screen = pygame.display.set_mode(
+                pygame.FULLSCREEN | pygame.DOUBLEBUF | pygame.HWSURFACE)
+        else:
+            screen = pygame.display.set_mode((900, 500),
+                pygame.DOUBLEBUF | pygame.OPENGL | pygame.RESIZABLE)
+        if winloop(screen, page):
             break
