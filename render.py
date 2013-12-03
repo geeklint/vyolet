@@ -17,4 +17,23 @@
 '''
 
 # commands:
-(CLEAR, LINE, CIRCLE, DISK) = xrange(4)
+(CLEAR, COLOR, LINE, CIRCLE, DISK) = xrange(5)
+
+def clear():
+    pass
+
+
+def color(r, g, b, a=0xff):
+    pass
+
+
+def line(points):
+    pass
+
+
+def circle(pos, radius, stroke):
+    pass
+
+
+def disk(pos, radius):
+    pass

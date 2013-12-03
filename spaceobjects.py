@@ -17,41 +17,85 @@
 '''
 
 import math
-from collections import namedtuple
+from collections import namedtuple, defaultdict
+from UserDict import DictMixin
 
 import render
+import shipparts
 
-class Vector(namedtuple('Vector', 'x y')):
+#######################################
+# Utility classes
+#######################################
+
+class Vector(namedtuple('VectorBase', 'x y')):
     '''Class to represent vectors'''
-    
+
+    @property
     def distance(self, other):
         '''Return the straight-line distance from this vector to another'''
-        return math.sqrt((self.x-other.x)**2 + (self.y-other.y)**2)
-    
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
     def __neg__(self):
         '''Negative vector'''
         return Vector(-self.x, -self.y)
-    
+
     def __add__(self, other):
         '''Vector addition'''
-        return Vector(self.x+other.x, self.y+other.y)
-        
+        return Vector(self.x + other.x, self.y + other.y)
+
     def __sub__(self, other):
         '''Vector subtraction'''
-        return Vector(self.x-other.x, self.y-other.y)
-        
+        return Vector(self.x - other.x, self.y - other.y)
+
     def __mul__(self, other):
         '''Dot product when by Vector, scale otherwise'''
         if isinstance(other, Vector):
             return self.x * other.x + self.y * other.y
         else:
             return Vector(self.x * other, self.y * other)
-    
+
     def __len__(self):
-        return math.sqrt(self.x**2 + self.y**2)
+        '''Magnitude'''
+        return math.sqrt(self.x ** 2 + self.y ** 2)
 
 Vector.origin = Vector(0.0, 0.0)
 
+
+class NestedAttribute(object):
+    default = None
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getattr__(self, attr):
+        attr = '_'.join((self.__class__.__name__.lower(), attr))
+        return getattr(self.obj, attr, self.default)
+
+
+class Stats(DictMixin):
+    def __init__(self):
+        self.data = dict()
+
+    def __getattr__(self, attr):
+        return self[attr]
+
+    def __setattr__(self, attr, value):
+        self[attr] = value
+
+    def __getitem__(self, key):
+        boost = self.get('_'.join((key, 'boost')), 0)
+        return (1 + boost) * self.data[key]
+
+    def __setitem__(self, key, value):
+        self.data[key] = value
+
+    def __delitem__(self, key):
+        self.data.pop(key)
+
+
+#######################################
+# Base Class
+#######################################
 
 class SpaceObject(object):
     '''Base class for all space objects'''
@@ -82,17 +126,17 @@ class SpaceObject(object):
             others.append(self)
         # .affect: a collection of functions which another object can use
         self.affect = self.Affect(self)
-    
+
     def get_pivot(self):
         '''Get the coord of the tile of space which we are on'''
         return Vector(int(self.pos.x / 100), int(self.pos.y / 100))
-    
+
     def get_tiles(self):
         '''Get the 9x9 grid of space tiles closest to us'''
         around = (-1, 0, 1)
         x, y = self.pivot
-        return [self.space[x+nx, y+ny] for nx in around for ny in around]
-    
+        return [self.space[x + nx, y + ny] for nx in around for ny in around]
+
     def get_nearby(self, distance=100):
         '''Get all space objects within a radius. Radii over 100 discouraged'''
         for tile in self.tiles:
@@ -100,27 +144,45 @@ class SpaceObject(object):
                 obj_dist = self.pos.distance(space_object.pos)
                 if obj_dist <= distance:
                     yield space_object, obj_dist
-    
+
     def render(self):
         '''Return a list of render commands and their arguments'''
-        return [render.clear(),]
-    
-    class Affect(object):
-        def __init__(self, obj):
-            self.obj = obj
-            
-        def __getattr__(self, attr):
-            return lambda *e: None
-        
+        return [render.clear(), ]
+
+    class Affect(NestedAttribute):
+        def default(self, *args):
+            pass
+
     def destroy(self):
         '''Remove this object from space'''
         self.tiles[4].local.remove(self)
         self.others[self.id_] = None
-    
+
     def tick(self):
         self.pos += self.vel
         self.vel += self.acl
         self.acl = Vector.origin
+
+
+class Damageable(SpaceObject):
+    '''Class which represents an object which can be damaged
+    '''
+
+    @staticmethod
+    def reduce(amount, resist):
+        return int(100 * amount / (100. + resist))
+
+    def affect_damage(self, direction, amount, dmg_type, cause):
+        pass
+
+
+
+class Mineable(SpaceObject):
+    '''Class which represents an object which can be mined
+    '''
+
+    def affect_mine(self):
+        pass
 
 
 class DamageSphere(SpaceObject):
@@ -132,9 +194,9 @@ class DamageSphere(SpaceObject):
         self.atmospheres = sorted(
             self.get_atmospheres(kwargs.pop('atmosphere')))
         self.size = self.atmospheres[-1].size
-    
+
     Atmosphere = namedtuple('Atmosphere', 'size color damage dmg_type')
-        
+
     def get_atmospheres(self, key):
         '''Return a list of Atmospheres'''
         pass
@@ -143,7 +205,7 @@ class DamageSphere(SpaceObject):
         display = super(DamageSphere, self).render()
         for atmos in sorted(self.atmospheres, reverse=True):
             display.extend((
-                render.color(atmos.color),
+                render.color(*atmos.color),
                 render.disk(atmos.size)))
         return display
 
@@ -153,10 +215,38 @@ class DamageSphere(SpaceObject):
             if dist < (self.size * 100):
                 for atmos in self.atmospheres:
                     if dist < (atmos.size * 100):
-                        sp_obj.damage(None, atmos.damage, atmos.dmg_type, self)
+                        sp_obj.affect.damage(
+                            None, atmos.damage, atmos.dmg_type, self)
                         break
-            sp_obj.acl += (self.size / dist**2) * (self.pos - sp_obj.pos)
+            sp_obj.acl += (self.size / dist ** 2) * (self.pos - sp_obj.pos)
 
 
-class Mineable(SpaceObject):
-    
+class Ship(Damageable):
+    def __init__(self, **kwargs):
+        super(Ship, self).__init__(**kwargs)
+        self.stats = Stats()
+        self.parts = shipparts.PartsContainer()
+        self.parts.sub((0, 0), shipparts.Cockpit())
+
+    def refresh_stats(self):
+        self.stats.clear()
+        for part in self.parts:
+            for stat in part.stats:
+                self.stats[stat] += part.stats[stat]
+
+    @property
+    def dest(self):
+        if isinstance(self._dest, SpaceObject):
+            dest = self._dest.pos
+            if self.pos.distance(dest) > 100:
+                self._dest = dest
+            return dest
+        else:
+            return self._dest
+
+    @dest.setter
+    def dest(self, value):
+        if isinstance(value, SpaceObject):
+            self._dest = value
+        else:
+            self._dest = Vector(*value)

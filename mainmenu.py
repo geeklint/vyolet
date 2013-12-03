@@ -1,6 +1,5 @@
 '''
-    Copyright (c) 2013 Sky Leonard
-    This file is part of Vyolet.
+This file is part of Vyolet.
 
     Vyolet is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -15,23 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
+import page
 
-import json
-
-import pygame
-
-from display import loop
-from utils import DataFile
-import mainmenu
-
-SETTINGS = {
-    'winsize': 2,
-}
-
-
-def main(version):
-    pygame.init()
-    page = mainmenu.MainMenu()
-    with DataFile('settings.json', SETTINGS, json) as settings:
-        loop(settings, version, page)
-    pygame.quit()
+class MainMenu(page.Page):
+    pass

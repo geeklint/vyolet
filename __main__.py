@@ -63,11 +63,10 @@ def main():
     os.chdir(options.rootdir)
     if options.server:
         pass
-#         import servermain
-#         return servermain.main(version)
+#         import servermain as runmain
     else:
-        import clientmain
-        return clientmain.main(version)
+        import clientmain as runmain
+    return runmain.main(version)
 
 
 if __name__ == '__main__':
