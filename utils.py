@@ -21,14 +21,14 @@ import shutil
 import zipfile
 
 class DataFile(object):
-    def __init__(self, filename, data, pickler):
+    def __init__(self, filename, default, pickler):
         self.filename = filename
         self.pickler = pickler
         if os.path.exists(filename):
             with open(filename) as datafile:
                 self.data = pickler.load(datafile)
         else:
-            self.data = data
+            self.data = default()
 
     def __enter__(self):
         return self.data

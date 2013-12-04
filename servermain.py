@@ -27,7 +27,7 @@ from version import Version
 import threading
 
 
-def handle_client(version, nr, packet, args):
+def handle_client(version, queue, nr, packet, args):
     if nr.stage == 0:
         if packet == 'handshake' and args[0] == network.HANDSHAKE:
             nr.stage = 1
@@ -46,6 +46,7 @@ def handle_client(version, nr, packet, args):
                 return
             nr.username = username
             nr.stage = 2
+            queue.put((events.LOGIN, (username, nr)))
         else:
             return
     else:
@@ -57,8 +58,9 @@ def handle_client(version, nr, packet, args):
 class Listener(asyncore.dispatcher):
     shutdown = False
 
-    def __init__(self, version):
+    def __init__(self, version, queue):
         self.version = version
+        self.event_queue = queue
         sock = network.server_connection(network.PORT)
         if sock is None:
             raise ValueError('Could not open connection')
@@ -78,7 +80,8 @@ class Listener(asyncore.dispatcher):
         console.printf('Connected by {}', repr(addr))
         nr = network.NetworkReciever(sock=conn, recv_callback=None)
         nr.stage = 0
-        nr.recv_callback = partial(handle_client, self.version, nr)
+        nr.recv_callback = partial(
+            handle_client, self.version, self.event_queue, nr)
 
 
 def on_command(queue, cmd):
