@@ -19,21 +19,31 @@
 # commands:
 (CLEAR, COLOR, LINE, CIRCLE, DISK) = xrange(5)
 
+def complete(func):
+    def wrapper(*args):
+        return (func(*args) + (0, 0, 0, 0, 0, 0, 0, 0))[:8]
+    return wrapper
+
+@complete
 def clear():
-    pass
+    return (CLEAR, 0)
 
 
+@complete
 def color(r, g, b, a=0xff):
-    pass
+    return (COLOR, 4, r, g, b, a)
 
 
+@complete
 def line(points):
     pass
 
 
+@complete
 def circle(pos, radius, stroke):
-    pass
+    return (CIRCLE, 3, pos, radius, stroke)
 
 
+@complete
 def disk(pos, radius):
-    pass
+    return (DISK, 2, pos, radius)

@@ -19,4 +19,4 @@ This file is part of Vyolet.
     QUIT,
     CMD,
     LOGIN,
-) = xrange(2)
+) = xrange(3)

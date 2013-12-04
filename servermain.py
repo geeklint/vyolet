@@ -65,6 +65,7 @@ class Listener(asyncore.dispatcher):
         if sock is None:
             raise ValueError('Could not open connection')
         asyncore.dispatcher.__init__(self, sock=sock)
+        self.accepting = True
 
     def readable(self):
         if self.shutdown:
@@ -73,7 +74,7 @@ class Listener(asyncore.dispatcher):
                 if isinstance(nr, network.NetworkReciever):
                     nr.sendp.disconnect('Server shutdown')
             raise asyncore.ExitNow
-        asyncore.dispatcher.readable(self)
+        return asyncore.dispatcher.readable(self)
 
     def handle_accept(self):
         conn, addr = self.accept()
@@ -87,10 +88,12 @@ class Listener(asyncore.dispatcher):
 def on_command(queue, cmd):
     queue.put((events.CMD, cmd))
 
+
 def main(version):
     console.printf('Starting Vyolet Server version {}', version.short)
     eventqueue = Queue.Queue()
     console.callback = partial(on_command, eventqueue)
+    listener = Listener(version, eventqueue)
     threading.Thread(target=asyncore.loop, args=(5.0, True)).start()
-    Listener()
     gameloop.gameloop(eventqueue)
+    listener.shutdown = True

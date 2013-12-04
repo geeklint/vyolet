@@ -24,6 +24,7 @@ from collections import namedtuple, defaultdict
 
 import render
 import shipparts
+from utils import Nil
 
 '''
 Notes about coordinates:
@@ -38,10 +39,9 @@ Notes about coordinates:
 # Utility classes
 #######################################
 
-class Vector(namedtuple('VectorBase', 'x y')):
+class Vector(namedtuple('Vector', 'x y')):
     '''Class to represent vectors'''
 
-    @property
     def distance(self, other):
         '''Return the straight-line distance from this vector to another'''
         return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
@@ -65,9 +65,16 @@ class Vector(namedtuple('VectorBase', 'x y')):
         else:
             return Vector(self.x * other, self.y * other)
 
+    def __rmul__(self, other):
+        return self * other
+
     def __len__(self):
         '''Magnitude'''
         return math.sqrt(self.x ** 2 + self.y ** 2)
+
+    def unit(self):
+        '''Vector along this vector with len == 1'''
+        return self * (1. / len(self))
 
     @classmethod
     def rect(cls, radius, angle):
@@ -77,18 +84,30 @@ class Vector(namedtuple('VectorBase', 'x y')):
 Vector.origin = Vector(0.0, 0.0)
 
 
-class NestedAttribute(object):
-    default = None
+class PickleMixin(object):
+    def __getstate__(self):
+        return self.__dict__
 
-    def __init__(self, obj):
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+
+
+class NestedAttribute(PickleMixin):
+    default = Nil
+
+    def default_callable(self, *args, **kwargs):
+        pass
+
+    def __init__(self, prefix, obj):
+        self.prefix = prefix
         self.obj = obj
 
     def __getattr__(self, attr):
-        attr = '_'.join((self.__class__.__name__.lower(), attr))
+        attr = '_'.join((self.prefix, attr))
         return getattr(self.obj, attr, self.default)
 
 
-class Stats(DictMixin):
+class Stats(DictMixin, PickleMixin):
     def __init__(self):
         self.data = dict()
 
@@ -116,16 +135,22 @@ class Stats(DictMixin):
 class SpaceObject(object):
     '''Base class for all space objects'''
     def __init__(self, **kwargs):
+        # .added: if we exist
+        self.added = False
         # .space: the master grid representing space
         self.space = kwargs.pop('space')
         # .pos: our location
         self.pos = kwargs.pop('pos')
+        # .direction: our direction
+        self.direction = 0
         # add ourselves to the center tile
         self.add_to_space()
         # .vel: our velocity
-        self.vel = kwargs.pop('vel')
+        self.vel = kwargs.pop('vel', Vector.origin)
         # .acl: our acceleration
         self.acl = Vector.origin
+        # .invalidate: cause render to refresh
+        self.invalidate = True
         # .others: all other space objects
         self.others = others = kwargs.pop('others')
         for i, other in enumerate(others):
@@ -137,7 +162,7 @@ class SpaceObject(object):
             self.id_ = len(others)
             others.append(self)
         # .affect: a collection of functions which another object can use
-        self.affect = self.Affect(self)
+        self.affect = NestedAttribute('affect', self)
 
     @property
     def pivot(self):
@@ -161,7 +186,8 @@ class SpaceObject(object):
         pivot = self.pivot
         self._pos = Vector(*value)
         if self.pivot != pivot:
-            self.rm_from_space()
+            if self.added:
+                self.rm_from_space()
             self.add_to_space()
 
     def get_nearby(self, distance=100):
@@ -174,23 +200,22 @@ class SpaceObject(object):
 
     def render(self):
         '''Return a list of render commands and their arguments'''
+        self.invalidate = False
         return [render.clear(), ]
 
-    class Affect(NestedAttribute):
-        def default(self, *args):
-            pass
-
     def add_to_space(self):
+        self.added = True
         self.tile = tile = self.tiles[4]
         tile.local.append(self)
 
     def rm_from_space(self):
+        self.added = False
         self.tile.local.remove(self)
-        self.others[self.id_] = None
 
     def destroy(self):
         '''Remove this object from space'''
         self.rm_from_space()
+        self.others[self.id_] = None
 
     def tick(self):
         self.pos += self.vel
@@ -225,6 +250,9 @@ class Mineable(SpaceObject):
         pass
 
 
+Atmosphere = namedtuple('Atmosphere', 'size color damage dmg_type')
+
+
 class DamageSphere(SpaceObject):
     '''Class which represents a large round body which will do damage to
        things that crash into it.
@@ -235,23 +263,26 @@ class DamageSphere(SpaceObject):
             self.get_atmospheres(kwargs.pop('atmosphere')))
         self.size = self.atmospheres[-1].size
 
-    Atmosphere = namedtuple('Atmosphere', 'size color damage dmg_type')
-
     def get_atmospheres(self, key):
         '''Return a list of Atmospheres'''
         pass
 
     def render(self):
         display = super(DamageSphere, self).render()
+        enum = 1
+        total = len(self.atmospheres)
         for atmos in sorted(self.atmospheres, reverse=True):
             display.extend((
-                render.color(*atmos.color),
+                render.color(*(atmos.color + (0xff * (enum // total),))),
                 render.disk(atmos.size)))
+            enum += 1
         return display
 
     def tick(self):
         super(DamageSphere, self).tick()
         for sp_obj, dist in self.get_nearby():
+            if sp_obj is self:
+                continue
             if dist < (self.size / 100.):
                 for atmos in self.atmospheres:
                     if dist < (atmos.size / 100.):
@@ -328,18 +359,21 @@ class Sun(DamageSphere):
             dmg_type = 'true' if size < 100 else 'fire'
             dmg = 1000. / size
             color = (int(0xff * (size / 410.)), 0, 0)
-            atmos.append(self.Atmosphere(size, color, dmg, dmg_type))
+            atmos.append(Atmosphere(size, color, dmg, dmg_type))
             size += rand.triangular(100)
         return atmos
 
 
 class Planet(DamageSphere, Satallite, Mineable):
-    pass
+    def get_atmospheres(self, key):
+        self.gaseous = bool(key & 1)
+        return [Atmosphere(100, (0xff, 0xff, 0xff), 0, 'none')]
 
 
 class UserShip(Ship):
 
-    def __init__(self, username, **kwargs):
+    def __init__(self, **kwargs):
+        self.name = kwargs.pop('name')
         kwargs.setdefault('pos', self.starting_location)
         super(UserShip, self).__init__(**kwargs)
 

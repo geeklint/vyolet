@@ -25,6 +25,7 @@ except ImportError:
 class FallbackConsole(threading.Thread):
 
     def __init__(self):
+        super(FallbackConsole, self).__init__()
         self.daemon = True
         self.prompt = '> '
         self.callback = lambda cmd: None
@@ -36,13 +37,17 @@ class FallbackConsole(threading.Thread):
 
     def run(self):
         while True:
-            cmd_str = raw_input(self.prompt)
+            try:
+                cmd_str = raw_input(self.prompt)
+            except EOFError:
+                cmd_str = 'stop'
             try:
                 cmd = shlex.split(cmd_str)
             except ValueError:
                 print 'Could not understand'
             else:
-                self.callback(cmd)
+                if cmd:
+                    self.callback(cmd)
 
 
 

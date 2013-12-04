@@ -21,6 +21,11 @@ import random
 import spaceobjects
 import math
 
+class Random(random.Random):
+    def randangle(self):
+        return self.randrange(360) * (math.pi / 180)
+
+
 class GeneratorState(object):
     pass
 
@@ -29,8 +34,8 @@ class Generator(object):
     def init(self, game):
         game.generator_state = GeneratorState()
         game.generator_state.size = 0
-        game.generator_state.rand = random.Random(game.seed)
-
+        game.generator_state.rand = Random(game.seed)
+        self.next(game)
 
 class DefaultGenerator(Generator):
     def next(self, game):
@@ -38,18 +43,19 @@ class DefaultGenerator(Generator):
         if game.generator_state.size == 0:
             sun = spaceobjects.Sun(
                 pos=(0, 0), atmosphere=rand.randrange(2 ** 31),
-                *game.spaceobject_params)
+                **game.spaceobject_params)
             grow = 5
             game.generator_state.size += rand.randrange(100)
         else:
             sun = game.objects[0]
-            grow = 1
+            grow = 2
         while grow:
-            pos = spaceobjects.Vector.rect(
-                game.generator_state.size,
-                rand.randrange(360) * (math.pi / 180))
             spaceobjects.Planet(
-                pos=pos,
-                orbit_origin=sun)
+                orbit_origin=sun,
+                orbit_radius=game.generator_state.size,
+                orbit_speed=rand.randangle() / 360,
+                orbit_angle=rand.randangle(),
+                atmosphere=rand.randrange(2 ** 31),
+                **game.spaceobject_params)
             game.generator_state.size += rand.randrange(100)
             grow -= 1

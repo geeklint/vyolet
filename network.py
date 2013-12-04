@@ -39,7 +39,7 @@ PACKETS = [
 
     0x20, 'space_object', 'Iddf',  # (id, pos,, direction) s -> c
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
-    0x22, 'space_object_render', 'I10pB8f',  # (id, cmd, num_args, args,,,,,,,,)
+    0x22, 'space_object_render', 'I10pB8l',  # (id, cmd, num_args, args,,,,,,,,)
     0x23, 'space_object_name', 'I15pH',  # (id, name, operations) s -> c
 
     0x30, 'set_dest', 'dd',  # (x, y) c -> s
@@ -82,7 +82,7 @@ def server_connection(port):
             continue
         try:
             sock.bind(sa)
-            sock.listen(1)
+            sock.listen(5)
         except socket.error:
             sock.close()
             sock = None
@@ -149,7 +149,7 @@ class NetworkReciever(asyncore.dispatcher_with_send):
                 fmt = self.packets.num_fmts[packet]
             except KeyError:
                 raise
-            fmt = ''.join('>', fmt)
+            fmt = ''.join(('>', fmt))
             size = struct.calcsize(fmt)
             if len(data) > size:
                 args = struct.unpack(fmt, data[1:1 + size])

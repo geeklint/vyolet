@@ -60,3 +60,18 @@ def blit_center(surface, source, pos, *args):
     size = source.get_size()
     pos = (int(pos[0] - size[0] / 2), int(pos[1] - size[1] / 2))
     surface.blit(source, pos, *args)
+
+
+def singleton(item):
+    return item()
+
+@singleton
+class Nil(object):
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattribute__(self, *args, **kwargs):
+        return self
+
+    def __getitem__(self, item):
+        return self

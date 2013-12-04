@@ -59,21 +59,12 @@ class MultiplayerMenu(page.Page):
 
     def enter(self, text):
         try:
-            room, addr, port = network.parse_address(text)
+            addr = network.parse_address(text)
         except ValueError:
             self.textbox.color = colors.RED
             self.update(self.textbox)
         else:
-            import socket
-            try:
-                conn = socket.create_connection((addr, port), 5.0)
-            except (socket.error, socket.timeout):
-                display.set_page(mainmenu.MainMenu())
-            else:
-                nr = network.NetworkReciever(conn)
-                nr.sendp.handshake(network.HANDSHAKE)
-                nr.sendp.login(0, 0, 'name', 'pass', room)
-                display.set_page(clientgame.LoadingPage(nr))
+            display.set_page(clientgame.LoadingPage(addr))
 
 
 class SettingsMenu(page.Page):

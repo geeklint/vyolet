@@ -14,17 +14,28 @@ This file is part of Vyolet.
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
+import socket
 import pygame
 
+from text import text
 import colors
+import display
+import network
 import page
 import utils
-from text import text
+import mainmenu
 
 
 class LoadingPage(page.Page):
-    def __init__(self, nr):
-        self.nr = nr
+    def __init__(self, (room, addr, port)):
+        try:
+            conn = socket.create_connection((addr, port), 5.0)
+        except (socket.error, socket.timeout):
+            display.set_page(mainmenu.MainMenu())
+        else:
+            self.nr = nr = network.NetworkReciever(conn, self.recv_callback)
+            nr.sendp.handshake(network.HANDSHAKE)
+            nr.sendp.login(0, 0, 'name', 'pass', room)
 
     def draw(self, screen, size):
         self.screen = screen
@@ -35,6 +46,10 @@ class LoadingPage(page.Page):
         label = font.render(text.loading, True, colors.WHITE)
         utils.blit_center(screen, label, self.origin)
         pygame.display.flip()
+
+    def recv_callback(self, packet, args):
+        if packet == 'login_confirm':
+            display.set_page(GamePage())
 
 
 class GamePage(page.Page):
