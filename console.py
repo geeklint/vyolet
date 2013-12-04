@@ -57,7 +57,7 @@ class ReadlineConsole(FallbackConsole):
         readline.redisplay()
 
 
-if readline is None:
+if True:  # readline is None:
     console = FallbackConsole()
 else:
     console = ReadlineConsole()

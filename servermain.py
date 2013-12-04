@@ -29,24 +29,28 @@ import threading
 
 def handle_client(version, queue, nr, packet, args):
     if nr.stage == 0:
-        if packet == 'handshake' and args[0] == network.HANDSHAKE:
-            nr.stage = 1
+        if packet == 'handshake':
+            if args[0] == network.HANDSHAKE:
+                nr.stage = 1
+            else:
+                nr.sendp.disconnect('Bad handshake')
         else:
             return
     elif nr.stage == 1:
         if packet == 'login':
             verj, vern, username, passkey, room = args
             c_ver = Version('Vyolet', (verj, vern))
-            if c_ver != version:
+            if not (c_ver == version):
                 nr.sendp.disconnect('Version Mismatch')
                 return
-            # verify passkey here
+            # TODO: verify passkey here
             if room != 'default':
                 nr.sendp.disconnect('Invalid room')
                 return
             nr.username = username
             nr.stage = 2
             queue.put((events.LOGIN, (username, nr)))
+            nr.sendp.login_confirm()
         else:
             return
     else:

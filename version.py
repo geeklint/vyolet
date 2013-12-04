@@ -81,4 +81,5 @@ class Version(object):
         return 'Version(%r)' % (self.tuple_,)
 
     def __eq__(self, other):
-        return self.tuple_ == other.tuple_
+        print 'veq', (self, other)
+        return self.tuple_[:2] == other.tuple_[:2]

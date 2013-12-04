@@ -38,7 +38,7 @@ PACKETS = [
     0x12, 'flash_ui', 'BBBB',  # (what, color,,,) s -> c
 
     0x20, 'space_object', 'Iddf',  # (id, pos,, direction) s -> c
-    0x21, 'space_object_dead', 'I',  # (id, ) s -> c
+    0x21, 'space_object_clear', 'I',  # () s -> c
     0x22, 'space_object_render', 'I10pB8l',  # (id, cmd, num_args, args,,,,,,,,)
     0x23, 'space_object_name', 'I15pH',  # (id, name, operations) s -> c
 
@@ -154,7 +154,7 @@ class NetworkReciever(asyncore.dispatcher_with_send):
             if len(data) > size:
                 args = struct.unpack(fmt, data[1:1 + size])
                 self.recv_callback(self.packets.num_names[packet], args)
-                data = data[:1 + size]
+                data = data[1 + size:]
             else:
                 break
         self.data = data

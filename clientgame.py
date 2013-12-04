@@ -48,9 +48,22 @@ class LoadingPage(page.Page):
         pygame.display.flip()
 
     def recv_callback(self, packet, args):
-        if packet == 'login_confirm':
-            display.set_page(GamePage())
+        if packet == 'disconnect':
+            print 'dc', args
+            display.set_page(mainmenu.MainMenu())
+        elif packet == 'login_confirm':
+            display.set_page(GamePage(self.nr))
 
 
 class GamePage(page.Page):
-    pass
+    def __init__(self, nr):
+        self.nr = nr
+        nr.recv_callback = self.recv_callback
+        self.objects = dict()
+
+    def recv_callback(self, packet, args):
+        if packet == 'disconnect':
+            print 'dc', args
+            display.set_page(mainmenu.MainMenu())
+        elif packet == 'space_object_clear':
+            pass

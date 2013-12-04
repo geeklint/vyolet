@@ -36,7 +36,7 @@ class Page(object):
         pass
 
     def input_key_down(self, key, mod, code):
-        print 'ikd', (key, mod, code)
+        pass
 
     def input_key_up(self, key, mod):
         pass

@@ -81,7 +81,7 @@ def gameloop(queue):
                 elif event == events.LOGIN:
                     username, source = args
                     print 'join:', username
-                    source.ship = game.spawn_ship(username)
+                    source.ship = game.spawn_ship(username, source)
             for obj in game.objects[:]:
                 if not obj.added:
                     continue

@@ -25,17 +25,18 @@ import text
 from display import loop
 from utils import DataFile
 
-SETTINGS = {
-    'fullscreen': False,
-    'framerate': 60,
-    'lang': 'en_us',
-}
+def get_settings():
+    return {
+        'fullscreen': False,
+        'framerate': 60,
+        'lang': 'en_us',
+    }
 
 
 def main(version):
     pygame.init()
     page = mainmenu.MainMenu()
-    with DataFile('settings.json', SETTINGS, json) as settings:
+    with DataFile('settings.json', get_settings, json) as settings:
         text._set_lang(settings['lang'])
         loop(settings, version, page)
     pygame.quit()

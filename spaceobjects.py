@@ -107,27 +107,6 @@ class NestedAttribute(PickleMixin):
         return getattr(self.obj, attr, self.default)
 
 
-class Stats(DictMixin, PickleMixin):
-    def __init__(self):
-        self.data = dict()
-
-    def __getattr__(self, attr):
-        return self[attr]
-
-    def __setattr__(self, attr, value):
-        self[attr] = value
-
-    def __getitem__(self, key):
-        boost = self.get('_'.join((key, 'boost')), 0)
-        return (1 + boost) * self.data[key]
-
-    def __setitem__(self, key, value):
-        self.data[key] = value
-
-    def __delitem__(self, key):
-        self.data.pop(key)
-
-
 #######################################
 # Base Class
 #######################################
@@ -318,7 +297,7 @@ class Satallite(SpaceObject):
 class Ship(Damageable):
     def __init__(self, **kwargs):
         super(Ship, self).__init__(**kwargs)
-        self.stats = Stats()
+        self.stats = dict()
         self.parts = shipparts.PartsContainer()
         self.parts.sub((0, 0), shipparts.Cockpit())
 
@@ -379,7 +358,7 @@ class UserShip(Ship):
 
     @property
     def starting_location(self):
-        Vector.rect(200, random.randrange(360) * math.pi / 180)
+        return Vector.rect(200, random.randrange(360) * math.pi / 180)
 
 
 
