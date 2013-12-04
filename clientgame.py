@@ -16,14 +16,17 @@ This file is part of Vyolet.
 '''
 import socket
 import pygame
+from collections import defaultdict
+from functools import partial
 
 from text import text
 import colors
 import display
+import mainmenu
 import network
 import page
+import render
 import utils
-import mainmenu
 
 
 class LoadingPage(page.Page):
@@ -55,15 +58,60 @@ class LoadingPage(page.Page):
             display.set_page(GamePage(self.nr))
 
 
+class SpaceSprite(pygame.sprite.DirtySprite):
+    def __init__(self, gp, id_):
+        super(SpaceSprite, self).__init__()
+        self.gp = gp
+        self.id_ = id_
+        self.box = [0, 0, 0, 0]
+        self.image = pygame.Surface((0, 0))
+
+    @property
+    def rect(self):
+        return self.image.get_rect()
+
+    def _resize_point(self, x, y):
+        box = self.box[:]
+        if x < box[0]:
+            box[0] = x
+        elif x > box[2]:
+            box[2] = x
+        if y < box[1]:
+            box[1] = y
+        elif y > box[3]:
+            box[3] = y
+        if box != self.box:
+            width = box[2] - box[0]
+            height = box[3] - box[1]
+            image = pygame.Surface(width, height)
+            old = self.rect.copy()
+            old.x = self.box[0] - box[0]
+            old.y = self.box[1] - box[1]
+            image.blit(self.image, old)
+            self.image = image
+
+    def render(self, cmd, r, g, b, a, *args):
+        color = (r, g, b, a)
+        if cmd == render.CLEAR:
+            self.image.fill(color)
+
+
 class GamePage(page.Page):
     def __init__(self, nr):
         self.nr = nr
         nr.recv_callback = self.recv_callback
-        self.objects = dict()
+        self.objects = defaultdict(partial(SpaceSprite, self))
 
     def recv_callback(self, packet, args):
         if packet == 'disconnect':
             print 'dc', args
             display.set_page(mainmenu.MainMenu())
-        elif packet == 'space_object_clear':
-            pass
+        elif packet == 'space_object':
+            id_, x, y, d = args
+            self.objects[id_].x = x
+            self.objects[id_].y = y
+            self.objects[id_].d = d
+        elif packet == 'space_object_dead':
+            self.objects.pop(args[0])
+        elif packet == 'space_object_render':
+            self.objects[args[0]].render(*args)

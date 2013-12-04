@@ -23,6 +23,8 @@ import struct
 from collections import namedtuple
 from functools import partial
 
+import render
+
 
 HANDSHAKE = '\x69\x83\x82\xe2\xf4\x63\x22\x3b\x13\x91\xba\x28\x9b\x6f\x3d\x1d'
 PORT = 49777
@@ -38,8 +40,8 @@ PACKETS = [
     0x12, 'flash_ui', 'BBBB',  # (what, color,,,) s -> c
 
     0x20, 'space_object', 'Iddf',  # (id, pos,, direction) s -> c
-    0x21, 'space_object_clear', 'I',  # () s -> c
-    0x22, 'space_object_render', 'I10pB8l',  # (id, cmd, num_args, args,,,,,,,,)
+    0x21, 'space_object_dead', 'I',  # (id, ) s -> c
+    0x22, 'space_object_render', render.FMT,
     0x23, 'space_object_name', 'I15pH',  # (id, name, operations) s -> c
 
     0x30, 'set_dest', 'dd',  # (x, y) c -> s

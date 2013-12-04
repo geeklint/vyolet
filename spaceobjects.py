@@ -180,7 +180,7 @@ class SpaceObject(object):
     def render(self):
         '''Return a list of render commands and their arguments'''
         self.invalidate = False
-        return [render.clear(), ]
+        return [render.clear((0, 0, 0, 0)), ]
 
     def add_to_space(self):
         self.added = True
@@ -252,8 +252,8 @@ class DamageSphere(SpaceObject):
         total = len(self.atmospheres)
         for atmos in sorted(self.atmospheres, reverse=True):
             display.extend((
-                render.color(*(atmos.color + (0xff * (enum // total),))),
-                render.disk(atmos.size)))
+                render.disk(
+                    (atmos.color + (0xff * (enum // total),)), atmos.size)))
             enum += 1
         return display
 

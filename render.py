@@ -16,34 +16,33 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+
+FMT = 'IB4b8l'  # (id, cmd, args,,,,,,,,, color,,,,)
+
 # commands:
 (CLEAR, COLOR, LINE, CIRCLE, DISK) = xrange(5)
 
-def complete(func):
-    def wrapper(*args):
-        return (func(*args) + (0, 0, 0, 0, 0, 0, 0, 0))[:8]
+def renderfunc(func):
+    def wrapper(color, *args):
+        color = (color + (0xff,))[:4]
+        return color + (func(*args) + (0, 0, 0, 0, 0, 0, 0, 0))[:8]
     return wrapper
 
-@complete
+@renderfunc
 def clear():
-    return (CLEAR, 0)
+    return (CLEAR,)
 
 
-@complete
-def color(r, g, b, a=0xff):
-    return (COLOR, 4, r, g, b, a)
-
-
-@complete
+@renderfunc
 def line(points):
     pass
 
 
-@complete
+@renderfunc
 def circle(pos, radius, stroke):
-    return (CIRCLE, 3, pos, radius, stroke)
+    return (CIRCLE, pos, radius, stroke)
 
 
-@complete
+@renderfunc
 def disk(pos, radius):
-    return (DISK, 2, pos, radius)
+    return (DISK, pos, radius)
