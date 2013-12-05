@@ -20,7 +20,7 @@
 FMT = 'IB4b8l'  # (id, cmd, args,,,,,,,,, color,,,,)
 
 # commands:
-(CLEAR, COLOR, LINE, CIRCLE, DISK) = xrange(5)
+(CLEAR, LINE, CIRCLE) = xrange(3)
 
 def renderfunc(func):
     def wrapper(color, *args):
@@ -45,4 +45,4 @@ def circle(pos, radius, stroke):
 
 @renderfunc
 def disk(pos, radius):
-    return (DISK, pos, radius)
+    return (CIRCLE, pos, radius, 0)

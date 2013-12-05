@@ -93,4 +93,6 @@ def gameloop(queue):
                             for render in obj.render():
                                 source.sendp.render(obj.id_, *render)
                         source.sendp.spaceobject(
-                            obj.id_, obj.pos[0], obj.pos[1], obj.direction)
+                            obj.id_,
+                            obj.pos[0], obj.pos[1], obj.direction,
+                            other is obj)

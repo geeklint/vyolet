@@ -39,7 +39,7 @@ PACKETS = [
     0x11, 'viewpoint', 'I',  # (id, ) s -> c
     0x12, 'flash_ui', 'BBBB',  # (what, color,,,) s -> c
 
-    0x20, 'space_object', 'Iddf',  # (id, pos,, direction) s -> c
+    0x20, 'space_object', 'Iddf?',  # (id, pos,, direction, you) s -> c
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
     0x22, 'space_object_render', render.FMT,
     0x23, 'space_object_name', 'I15pH',  # (id, name, operations) s -> c

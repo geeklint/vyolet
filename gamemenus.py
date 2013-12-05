@@ -19,7 +19,6 @@ import pygame
 import clientgame
 import colors
 import display
-import mainmenu
 import network
 import page
 import textbox

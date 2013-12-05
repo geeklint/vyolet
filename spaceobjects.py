@@ -19,8 +19,7 @@
 import cmath
 import math
 import random
-from UserDict import DictMixin
-from collections import namedtuple, defaultdict
+from collections import namedtuple
 
 import render
 import shipparts
@@ -334,7 +333,7 @@ class Sun(DamageSphere):
         rand = random.Random(key)
         atmos = []
         size = 10
-        for i in xrange(5):
+        for _i in xrange(5):
             dmg_type = 'true' if size < 100 else 'fire'
             dmg = 1000. / size
             color = (int(0xff * (size / 410.)), 0, 0)
