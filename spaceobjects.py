@@ -68,6 +68,9 @@ class Vector(namedtuple('Vector', 'x y')):
     def __rmul__(self, other):
         return self * other
 
+    def __div__(self, div):
+        return self * (1. / div)
+
     def __pow__(self, exp):
         return Vector(self.x ** exp, self.y ** exp)
 
@@ -336,7 +339,7 @@ class Ship(Damageable):
         self.stats = defaultdict(lambda: 0.0)
         self.parts = shipparts.PartsContainer(self)
         self.parts.sub((0, 0), shipparts.Cockpit())
-        self.thrust = [False, False, False, False]
+        self.thrust = Vector(0, 0)
 
     def affect_damage(self, direction, amount, dmg_type, cause):
         pass
@@ -350,12 +353,15 @@ class Ship(Damageable):
         super(Ship, self).tick()
         for part in self.parts:
             part.tick(self)
-        towards = Vector(self.thrust[0] - self.thrust[1],
-                         self.thrust[2] - self.thrust[3]).unit()
-        if towards and len(self.vel) < self.top_speed:
+        if self.thrust and len(self.vel) < self.top_speed:
+            thrust = len(self.thrust)
             for part in self.parts:
-                amount = part.thrust(self) / self.stats['weight']
-                self.acl += towards * amount
+                amount = part.thrust(self, thrust) / self.stats['weight']
+                self.acl += self.thrust * amount
+        elif not self.thrust and len(self.vel):
+            for part in self.parts:
+                amount = part.thrust(self, .5) / self.stats['weight']
+                self.acl -= self.vel.unit() * amount
 
 
 
@@ -371,7 +377,7 @@ class Sun(DamageSphere, Static, Gravity):
         for _i in xrange(5):
             dmg_type = 'true' if size < 100 else 'fire'
             dmg = 1000. / size
-            color = (int(0xff * (size / 410.)), 0, 0)
+            color = (0xff, int(0xff) * (size / 410.), 0)
             atmos.append(Atmosphere(size, color, dmg, dmg_type))
             size += rand.triangular(100)
         return atmos

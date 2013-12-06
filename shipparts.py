@@ -126,7 +126,7 @@ class ShipPart(object):
     def on_rm(self, ship):
         pass
 
-    def thrust(self, ship):
+    def thrust(self, ship, amount):
         return 0
 
     def tick(self, ship):
@@ -168,8 +168,12 @@ class RegenMixin(ShipPart):
 #######################################
 
 
-class Cockpit(StatsMixin, RegenMixin):
+class NonePart(ShipPart):
     id_ = 0
+
+
+class Cockpit(StatsMixin, RegenMixin):
+    id_ = 1
 
     stats = {
         'weight': 200,
@@ -183,16 +187,16 @@ class Cockpit(StatsMixin, RegenMixin):
         'energy': 1,
     }
 
-    def thrust(self, ship):
-        if ship.stats['energy'] > 10:
-            ship.stats['energy'] -= 10
-            return .1
+    def thrust(self, ship, amount):
+        if ship.stats['energy'] > 10 * amount:
+            ship.stats['energy'] -= 10 * amount
+            return .1 * amount
         else:
             return 0
 
 
 class Capacitor(StatsMixin):
-    id_ = 1
+    id_ = 2
 
     stats = {
         'weight': 100,
@@ -201,30 +205,30 @@ class Capacitor(StatsMixin):
 
 
 class FuelTank(StatsMixin):
-    id_ = 2
+    id_ = 3
 
     stats = {
         'max_fuel': 100,
     }
 
 
-class Engine(StatsMixin):
-    id_ = 3
+class Rocket(StatsMixin):
+    id_ = 4
 
     stats = {
         'weight': 100,
     }
 
-    def thrust(self, ship):
-        if ship.stats['fuel'] > 10:
-            ship.stats['fuel'] -= 10
-            return .5
+    def thrust(self, ship, amount):
+        if ship.stats['fuel'] > amount:
+            ship.stats['fuel'] -= amount
+            return .5 * amount
         else:
             return 0
 
 
 class Armor(StatsMixin):
-    id_ = 4
+    id_ = 5
 
     health = 500
 

@@ -41,8 +41,7 @@ PACKETS = [
     0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
     0x24, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
 
-#     0x30, 'set_dest', 'dd',  # (x, y) c -> s
-    0x30, 'thrust', '????',  # (n, s, e, w) c -> s
+    0x30, 'thrust', 'bb',  # (x, y) c -> s
     0x31, 'edit_ship', 'x',  # () c -> s
     0x32, 'full_grid', 'x',  # (title, items, damage) s -> c
     0x33, 'small_grid', 'x',  # not implemented
@@ -163,7 +162,7 @@ class NetworkReciever(asyncore.dispatcher_with_send):
         self.data = data
 
     def d(self, rw, packet, args):
-        if packet == 'space_object':
+        if packet in ('space_object', 'ship_stats'):
             return
         sys.stderr.write(' '.join((rw, packet, repr(args), '\n')))
         sys.stderr.flush()

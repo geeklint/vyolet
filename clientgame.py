@@ -161,6 +161,8 @@ class GamePage(page.Page):
         self.model = None
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
+        self.bg_source = pygame.image.load(utils.ensure_res('stars.png'))
+        self.parts_source = pygame.image.load(utils.ensure_res('parts.png'))
 
     @property
     def origin_x(self):
@@ -204,29 +206,36 @@ class GamePage(page.Page):
                     (x + rect.x, y + rect.y), button)
             else:
                 self.model = None
-        if self.grid_button_rect.collidepoint(x, y):
-            self.nr.sendp.edit_ship()
+        else:
+            offset = max(self.size) / 2.
+            x = 0x7f * (x - offset) / offset
+            y = 0x7f * (y - offset) / offset
+            self.nr.sendp.thrust(x, y)
 
     def input_key_down(self, key, mod, code):
-        nsew = (pygame.K_RIGHT, pygame.K_LEFT, pygame.K_DOWN, pygame.K_UP)
-        if key in nsew:
-            self.thrust[nsew.index(key)] = True
-            self.nr.sendp.thrust(*self.thrust)
+        pass
 
     def input_key_up(self, key, mod):
-        nsew = (pygame.K_RIGHT, pygame.K_LEFT, pygame.K_DOWN, pygame.K_UP)
-        if key in nsew:
-            self.thrust[nsew.index(key)] = False
-            self.nr.sendp.thrust(*self.thrust)
+        pass
 
     def draw(self, screen, size):
         self.screen = screen
         self.size = size
-        screen.fill(colors.BLACK)
+        self.draw_bg(screen, size)
         SpaceSprite.group.draw(screen)
         self.draw_hud(screen, size)
         self.draw_model(screen, size)
         pygame.display.flip()
+
+    def draw_bg(self, screen, size):
+        x = -self.origin[0] % 1600
+        y = -self.origin[1] % 900
+        cells = ((x - 1600, y - 900), (x, y - 900), (x + 1600, y - 900),
+                 (x - 1600, y), (x, y), (x + 1600, y),
+                 (x - 1600, y + 900), (x, y + 900), (x + 1600, y + 900))
+        for pos in cells:
+            rect = pygame.Rect(pos, (1600, 900))
+            screen.blit(self.bg_source, rect)
 
     def draw_hud(self, screen, size):
         width, height = size
@@ -253,12 +262,17 @@ class GamePage(page.Page):
             y = int(size[1] * .10)
             size = (x * 8, y * 8)
             surf = pygame.Surface(size)
-            self.model.draw(surf, size)
+            self.model.draw(self, surf, size)
             rect = pygame.Rect(x - 5, y - 5, size[0] + 10, size[1] + 10)
             pygame.draw.rect(screen, colors.VYOLET, rect)
             rect = pygame.Rect(x, y, size[0], size[1])
             screen.blit(surf, rect)
 
+    def draw_part(self, screen, id_, pos):
+        offset = (id_ * 48 % self.parts_source.get_rect().width,
+                  int(id_ * 48 / self.parts_source.get_rect().width))
+        area = pygame.Rect(offset, (48, 48))
+        screen.blit(self.parts_source, pos, area)
 
     def tick(self):
         self.draw(self.screen, self.size)
@@ -268,7 +282,7 @@ class FullGridModel(object):
     def __init__(self, items):
         self.items = items
 
-    def draw(self, screen, size):
+    def draw(self, gp, screen, size):
         self.screen = screen
         self.size = size
         item_size = min(size[0] / 17, size[1] / 13)

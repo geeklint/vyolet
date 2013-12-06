@@ -20,6 +20,7 @@ from functools import partial
 import events
 import network
 import render
+import spaceobjects
 from version import Version
 
 
@@ -56,7 +57,7 @@ def handle_client(version, queue, nr, packet, args):
         elif packet == 'space_object_req_render':
             queue.put((events.RUN, (partial(send_render, nr, args[0]),)))
         elif packet == 'thrust':
-            nr.ship.thrust = args
+            nr.ship.thrust = spaceobjects.Vector(*args) / 128
         elif packet == 'edit_ship':
             nr.sendp.full_grid()
 
