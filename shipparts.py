@@ -14,6 +14,7 @@ This file is part of Vyolet.
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
+import render
 
 class PartsContainer(object):
 
@@ -80,8 +81,18 @@ class PartsContainer(object):
                 return False
         return True
 
-    def pack(self):
-        pass
+    def render(self, color):
+        display = []
+        x = -5 * self.size[0] / 2
+        for col in self.data:
+            y = -5 * self.size[1] / 2
+            for part in col:
+                if part is not None:
+                    display.append(
+                        render.rect(color, (x, y), (5, 5)))
+                y += 5
+            x += 5
+        return display
 
     def __iter__(self):
         for col in self.data:
@@ -98,11 +109,16 @@ def part_metaclass(name, parents, attr):
     return obj
 
 
+#######################################
+# Mixin Bases
+#######################################
+
+
 class ShipPart(object):
     __metaclass__ = part_metaclass
     id_ = -1
 
-    stats = dict()
+    health = 100
 
     def on_add(self, ship):
         pass
@@ -147,12 +163,20 @@ class RegenMixin(ShipPart):
             self.calc_regen(ship, stat, value)
 
 
+#######################################
+# Primary Classes
+#######################################
+
+
 class Cockpit(StatsMixin, RegenMixin):
     id_ = 0
 
     stats = {
-        'weight': 100,
+        'weight': 200,
+        'energy': 100,
         'max_energy': 100,
+        'fuel': 100,
+        'max_fuel': 100,
     }
 
     regen = {
@@ -160,10 +184,50 @@ class Cockpit(StatsMixin, RegenMixin):
     }
 
     def thrust(self, ship):
-        if ship.stats['energy'] > 1:
-            ship.stats['energy'] -= 1
-            return 1
+        if ship.stats['energy'] > 10:
+            ship.stats['energy'] -= 10
+            return .1
         else:
             return 0
 
 
+class Capacitor(StatsMixin):
+    id_ = 1
+
+    stats = {
+        'weight': 100,
+        'max_energy': 100,
+    }
+
+
+class FuelTank(StatsMixin):
+    id_ = 2
+
+    stats = {
+        'max_fuel': 100,
+    }
+
+
+class Engine(StatsMixin):
+    id_ = 3
+
+    stats = {
+        'weight': 100,
+    }
+
+    def thrust(self, ship):
+        if ship.stats['fuel'] > 10:
+            ship.stats['fuel'] -= 10
+            return .5
+        else:
+            return 0
+
+
+class Armor(StatsMixin):
+    id_ = 4
+
+    health = 500
+
+    stats = {
+        'weight': 500,
+    }

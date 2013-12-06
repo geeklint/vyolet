@@ -52,12 +52,15 @@ def handle_client(version, queue, nr, packet, args):
     # Main packet handlers
     else:
         if packet == 'disconnect':
-            queue.put((events.LOGIN, (nr.username,)))
+            queue.put((events.LOGOUT, (nr.username,)))
         elif packet == 'space_object_req_render':
             queue.put((events.RUN, (partial(send_render, nr, args[0]),)))
         elif packet == 'thrust':
             nr.ship.thrust = args
+        elif packet == 'edit_ship':
+            nr.sendp.full_grid()
 
 
 def send_render(nr, id_, game):
-    render.send(nr, game.objects[id_])
+    if id_ in game.objects:
+        render.send(nr, game.objects[id_])

@@ -288,12 +288,14 @@ class DamageSphere(SpaceObject):
 
 
 class Gravity(SpaceObject):
-    gravity = 1.
+    gravity = .00001
     def tick(self):
         super(Gravity, self).tick()
         for obj, dist in self.get_nearby():
             if dist:
-                obj.acl += (self.gravity / dist ** 2) * (self.pos - obj.pos)
+                acl = Vector.origin
+                acl += (self.gravity / dist ** 2) * (self.pos - obj.pos)
+                obj.acl += acl
 
 
 
@@ -328,6 +330,7 @@ class Satallite(SpaceObject):
 
 class Ship(Damageable):
     top_speed = 1
+    color = colors.VYOLET
     def __init__(self, **kwargs):
         super(Ship, self).__init__(**kwargs)
         self.stats = defaultdict(lambda: 0.0)
@@ -335,30 +338,12 @@ class Ship(Damageable):
         self.parts.sub((0, 0), shipparts.Cockpit())
         self.thrust = [False, False, False, False]
 
-#     @property
-#     def dest(self):
-#         if not hasattr(self, '_dest'):
-#             return self.pos
-#         if isinstance(self._dest, SpaceObject):
-#             dest = self._dest.pos
-#             if self.pos.distance(dest) > 100:
-#                 self._dest = dest
-#             return dest
-#         else:
-#             return self._dest
-#
-#     @dest.setter
-#     def dest(self, value):
-#         if value is self.pos:
-#             del self._dest
-#         elif isinstance(value, SpaceObject):
-#             self._dest = value
-#         else:
-#             self._dest = Vector(*value)
+    def affect_damage(self, direction, amount, dmg_type, cause):
+        pass
 
     def render(self):
         display = super(Ship, self).render()
-        display.extend([render.disk(colors.VYOLET, (0, 0), 10)])
+        display.extend(self.parts.render(self.color))
         return display
 
     def tick(self):
@@ -378,7 +363,7 @@ class Ship(Damageable):
 # Primary classes
 #######################################
 
-class Sun(DamageSphere, Static):  # , Gravity):
+class Sun(DamageSphere, Static, Gravity):
     def get_atmospheres(self, key):
         rand = random.Random(key)
         atmos = []
@@ -409,6 +394,12 @@ class UserShip(Ship):
     def starting_location(self):
         return Vector.rect(3, random.randrange(360) * math.pi / 180)
 
-
+    def tick(self):
+        super(UserShip, self).tick()
+        self.conn.sendp.ship_stats(
+            self.stats['energy'],
+            self.stats['max_energy'],
+            self.stats['fuel'],
+            self.stats['max_fuel'])
 
 

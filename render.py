@@ -20,7 +20,7 @@
 FMT = 'IB4B8l'  # (id, color,,, cmd, args,,,,,,,,,)
 
 # commands:
-(CLEAR, LINE, CIRCLE) = xrange(3)
+(CLEAR, LINE, RECT, CIRCLE) = xrange(4)
 
 def send(nr, obj):
     print repr(obj)
@@ -41,7 +41,26 @@ def clear():
 
 @renderfunc
 def line(points):
-    pass
+    while len(points) < 4:
+        points += points[-1]
+    arr = []
+    for point in points:
+        arr.extend(point)
+    return (LINE,) + tuple(arr)
+
+
+def lines(points):
+    sects = []
+    while len(points) > 4:
+        sects.append(points[:4])
+        points = points[4:]
+    sects.append(points)
+    return [line(sect) for sect in sects]
+
+
+@renderfunc
+def rect((x, y), (width, height)):
+    return (RECT, x, y, width, height)
 
 
 @renderfunc

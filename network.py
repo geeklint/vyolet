@@ -39,11 +39,12 @@ PACKETS = [
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
     0x22, 'space_object_render', render.FMT,
     0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
+    0x24, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
 
 #     0x30, 'set_dest', 'dd',  # (x, y) c -> s
     0x30, 'thrust', '????',  # (n, s, e, w) c -> s
     0x31, 'edit_ship', 'x',  # () c -> s
-    0x32, 'full_grid', '32p121H121B',  # (title, items, damage) s -> c
+    0x32, 'full_grid', 'x',  # (title, items, damage) s -> c
     0x33, 'small_grid', 'x',  # not implemented
     0x34, 'cargo_clear', 'x',  # () s <-> c (also, req)
     0x35, 'cargo_item', 'HB',  # (item, damage) s -> c
@@ -52,7 +53,7 @@ PACKETS = [
     0x38, 'engineering_option', 'H',  # (item,) s -> c
     0x39, 'engineer_item', 'H',  # (item,) c -> s
 
-    0x40, 'operate', 'IH',  # (target, operation) c -> s
+#     0x40, 'operate', 'IH',  # (target, operation) c -> s
 
     0xff, 'disconnect', '32p',  # (reason, ) c <-> s
 ]
@@ -137,9 +138,8 @@ class NetworkReciever(asyncore.dispatcher_with_send):
 
     def send_packet(self, packet, *args):
         self.d('<', self.packets.num_names[packet], args)
-        fmt = ''.join(('>', self.packets.num_fmts[packet]))
-        self.send(struct.pack('>B', packet))
-        self.send(struct.pack(fmt, *args))
+        fmt = ''.join(('>B', self.packets.num_fmts[packet]))
+        self.send(struct.pack(fmt, packet, *args))
 
     def handle_read(self):
         data = ''.join((self.data, self.recv(8192)))
@@ -168,58 +168,3 @@ class NetworkReciever(asyncore.dispatcher_with_send):
         sys.stderr.write(' '.join((rw, packet, repr(args), '\n')))
         sys.stderr.flush()
 import sys
-
-
-class NetworkRecieverOLD(object):
-    '''Custom socket interface, n.b.: passing `None` as `address` will create
-    a listening socket (for servers)'''
-    def __init__(self, address=None, port=None, sock=None):
-        self.packets = parse_packets()
-        self.addr = address
-        self.conn = None
-        if sock is not None:
-            self.conn = sock
-        elif address is None:
-            self.conn = server_connection(port)
-        else:
-            self.conn = socket.create_connection((address, port))
-    def __getattr__(self, name):
-        return getattr(self.conn, name)
-    def accept(self):
-        conn, addr = self.conn.accept()
-        return NetworkReciever(address=addr, sock=conn)
-    def send(self, packet_name, *args, **kwargs):
-        num = self.packets.name_nums[packet_name]
-        if kwargs.get('raw', False):
-            data = args[0]
-        else:
-            fmt = self.packets.num_fmts[num]
-            data = struct.pack('>' + fmt, *args)
-        head = struct.pack('>B', num)
-        to_send = ''.join((head, data))
-        sent_len = self.conn.send(to_send)
-        if sent_len != len(to_send):
-            print 'ERR: Packet may not have been delivered'
-    def recv(self):
-        packet_id = self.conn.recv(1)
-        if not packet_id:
-            self.close('socket died')
-        num = struct.unpack('>B', packet_id)[0]
-        fmt = '>' + self.packets.num_fmts[num]
-        size = struct.calcsize(fmt)
-        data = self.conn.recv(size)
-        res = struct.unpack(fmt, data)
-        packet_name = self.packets.num_names[num]
-        return (packet_name,) + res
-    def close(self, reason):
-        try:
-            self.send('disconnect', reason)
-        except socket.error:
-            pass
-        self.conn.close()
-        self.conn = None
-    def __del__(self):
-        if self.conn is not None and self.addr is not None:
-            self.close('NR object deleted')
-
-

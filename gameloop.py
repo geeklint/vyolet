@@ -52,16 +52,19 @@ class Game(object):
             ship = spaceobjects.UserShip(
                 name=username, **self.spaceobject_params)
         self.online[username] = (ship, source)
+        ship.conn = source
         return ship
 
     def despawn_ship(self, username):
         ship, _source = self.online.pop(username)
         ship.rm_from_space()
         self.offline[username] = ship
+        ship.conn = None
 
     @property
     def spaceobject_params(self):
         return {
+            'game': self,
             'others': self.objects,
             'space': self.space}
 
@@ -94,6 +97,10 @@ def gameloop(queue):
                     username, source = args
                     console.printf('{} logged in', username)
                     source.ship = game.spawn_ship(username, source)
+                elif event == events.LOGOUT:
+                    username, = args
+                    console.printf('{} logged out', username)
+                    game.despawn_ship(username)
             for obj in game.objects[:]:
                 if not obj.added:
                     continue

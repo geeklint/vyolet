@@ -124,9 +124,17 @@ class SpaceSprite(pygame.sprite.DirtySprite):
         elif cmd == render.CIRCLE:
             x, y, r, s = args[:4]
             self._resize_points(
-                (x + r, y), (x - r, y), (x, y + r), (x, y - r))
+                (x + r, y + r), (x - r, y - r))
             dx, dy = self.box[:2]
             pygame.draw.circle(self.original, color, (x + dx, y + dy), r, s)
+        elif cmd == render.RECT:
+            x, y, width, height = args[:4]
+            self._resize_points(
+                (x, y), (x + width, y + height))
+            dx, dy = self.box[:2]
+            rect = pygame.Rect(dx + x, dy + y, width, height)
+            print 'rect', rect
+            pygame.draw.rect(self.original, color, rect)
         else:
             print 'unk cmd', cmd
         self._rotate()
@@ -149,7 +157,10 @@ class GamePage(page.Page):
         self.objects = SpriteFactory(self)
         self.origin = (0, 0)
         self.size = (0, 0)
+        self.stats = (1, 1, 1, 1)
+        self.model = None
         self.thrust = [False, False, False, False]
+        self.font = pygame.font.SysFont('monospace', 12)
 
     @property
     def origin_x(self):
@@ -157,6 +168,13 @@ class GamePage(page.Page):
     @property
     def origin_y(self):
         return self.origin[1] - self.size[1] / 2
+
+    @property
+    def model_rect(self):
+        x = int(self.size[0] * .10)
+        y = int(self.size[1] * .10)
+        size = (x * 8, y * 8)
+        return pygame.Rect(x, y, size[0], size[1])
 
     def recv_callback(self, packet, args):
         if packet == 'disconnect':
@@ -172,15 +190,22 @@ class GamePage(page.Page):
         elif packet == 'space_object_dead':
             self.objects.pop(args[0])
         elif packet == 'space_object_render':
-            print self.objects
             self.objects[args[0]].render(*args[1:])
+        elif packet == 'ship_stats':
+            self.stats = args
+        elif packet == 'full_grid':
+            self.model = FullGridModel(args)
 
-#     def input_click_down(self, (x, y), button):
-#         x += self.origin_x
-#         y += self.origin_y
-#         x /= 100.
-#         y /= 100.
-#         self.nr.sendp.set_dest(x, y)
+    def input_click_down(self, (x, y), button):
+        if self.model:
+            rect = self.model_rect
+            if rect.collidepoint(x, y):
+                self.model.input_click_down(
+                    (x + rect.x, y + rect.y), button)
+            else:
+                self.model = None
+        if self.grid_button_rect.collidepoint(x, y):
+            self.nr.sendp.edit_ship()
 
     def input_key_down(self, key, mod, code):
         nsew = (pygame.K_RIGHT, pygame.K_LEFT, pygame.K_DOWN, pygame.K_UP)
@@ -199,7 +224,63 @@ class GamePage(page.Page):
         self.size = size
         screen.fill(colors.BLACK)
         SpaceSprite.group.draw(screen)
+        self.draw_hud(screen, size)
+        self.draw_model(screen, size)
         pygame.display.flip()
+
+    def draw_hud(self, screen, size):
+        width, height = size
+        x = width / 4
+        width = x * 2
+        y = height - 20
+        rect = pygame.Rect((x, y), (width, 20))
+        pygame.draw.rect(screen, (0x80, 0x80, 0x80), rect)
+        energy = float(self.stats[0]) / (self.stats[1] or 1)
+        rect = pygame.Rect((x, y), (int(energy * width), 10))
+        pygame.draw.rect(screen, (0x00, 0x00, 0xff), rect)
+        fuel = float(self.stats[2]) / (self.stats[3] or 1)
+        rect = pygame.Rect((x, y + 10), (int(fuel * width), 10))
+        pygame.draw.rect(screen, (0xff, 0x00, 0x00), rect)
+        rect = pygame.Rect((x + width, y), (20, 20))
+        self.grid_button_rect = rect
+        pygame.draw.rect(screen, (0xff, 0xff, 0xff), rect)
+        surf = self.font.render(repr(self.origin), True, colors.WHITE)
+        screen.blit(surf, (0, 0))
+
+    def draw_model(self, screen, size):
+        if self.model:
+            x = int(size[0] * .10)
+            y = int(size[1] * .10)
+            size = (x * 8, y * 8)
+            surf = pygame.Surface(size)
+            self.model.draw(surf, size)
+            rect = pygame.Rect(x - 5, y - 5, size[0] + 10, size[1] + 10)
+            pygame.draw.rect(screen, colors.VYOLET, rect)
+            rect = pygame.Rect(x, y, size[0], size[1])
+            screen.blit(surf, rect)
+
 
     def tick(self):
         self.draw(self.screen, self.size)
+
+
+class FullGridModel(object):
+    def __init__(self, items):
+        self.items = items
+
+    def draw(self, screen, size):
+        self.screen = screen
+        self.size = size
+        item_size = min(size[0] / 17, size[1] / 13)
+        for x in xrange(17):
+            for y in xrange(13):
+                rect = pygame.Rect(
+                    x * item_size, y * item_size, item_size, item_size)
+                pygame.draw.rect(screen, colors.BLACK, rect)
+                rect = pygame.Rect(
+                    x * item_size + 1, y * item_size + 1,
+                    item_size - 2, item_size - 2)
+                pygame.draw.rect(screen, colors.WHITE, rect)
+
+    def input_click_down(self, (x, y), button):
+        pass
