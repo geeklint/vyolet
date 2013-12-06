@@ -21,10 +21,10 @@ import shutil
 import zipfile
 
 class DataFile(object):
-    def __init__(self, filename, default, pickler):
+    def __init__(self, filename, default, pickler, load=True):
         self.filename = filename
         self.pickler = pickler
-        if os.path.exists(filename):
+        if load and os.path.exists(filename):
             with open(filename) as datafile:
                 self.data = pickler.load(datafile)
         else:
@@ -34,8 +34,11 @@ class DataFile(object):
         return self.data
 
     def __exit__(self, *exc):
-        with open(self.filename, 'w') as datafile:
-            self.pickler.dump(self.data, datafile)
+        try:
+            with open(self.filename, 'w') as datafile:
+                self.pickler.dump(self.data, datafile)
+        except Exception:
+            print 'save failed'
 
 
 RES_PREFIX = 'res'

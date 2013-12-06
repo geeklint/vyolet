@@ -32,7 +32,8 @@ class SingleplayerMenu(page.Page):
 class MultiplayerMenu(page.Page):
     def __init__(self):
         self.textbox = textbox.TextBox(
-            'monospace', 18, colors.WHITE, 100, self.update, self.enter)
+            'monospace', 18, colors.WHITE, 100, self.update, self.enter,
+            '0.0.0.0')
 
     def draw(self, screen, size):
         self.screen = screen

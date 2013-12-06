@@ -17,6 +17,8 @@ This file is part of Vyolet.
 
 (
     QUIT,
+    RUN,
     CMD,
     LOGIN,
-) = xrange(3)
+    LOGOUT,
+) = xrange(5)

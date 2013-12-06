@@ -19,8 +19,9 @@
 import cmath
 import math
 import random
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
+import colors
 import render
 import shipparts
 from utils import Nil
@@ -67,13 +68,19 @@ class Vector(namedtuple('Vector', 'x y')):
     def __rmul__(self, other):
         return self * other
 
+    def __pow__(self, exp):
+        return Vector(self.x ** exp, self.y ** exp)
+
     def __len__(self):
         '''Magnitude'''
         return math.sqrt(self.x ** 2 + self.y ** 2)
 
     def unit(self):
         '''Vector along this vector with len == 1'''
-        return self * (1. / len(self))
+        if len(self):
+            return self * (1. / len(self))
+        else:
+            return Vector.origin
 
     @classmethod
     def rect(cls, radius, angle):
@@ -112,23 +119,30 @@ class NestedAttribute(PickleMixin):
 
 class SpaceObject(object):
     '''Base class for all space objects'''
+
+    # .added: if we exist
+    added = False
+
+    # .direction: our direction
+    direction = 0
+
+    # .invalidate: cause render to refresh
+    invalidate = True
+
+    # .static: don't allow us to move
+    static = False
+
     def __init__(self, **kwargs):
-        # .added: if we exist
-        self.added = False
         # .space: the master grid representing space
         self.space = kwargs.pop('space')
         # .pos: our location
         self.pos = kwargs.pop('pos')
-        # .direction: our direction
-        self.direction = 0
         # add ourselves to the center tile
         self.add_to_space()
         # .vel: our velocity
         self.vel = kwargs.pop('vel', Vector.origin)
         # .acl: our acceleration
         self.acl = Vector.origin
-        # .invalidate: cause render to refresh
-        self.invalidate = True
         # .others: all other space objects
         self.others = others = kwargs.pop('others')
         for i, other in enumerate(others):
@@ -161,12 +175,13 @@ class SpaceObject(object):
 
     @pos.setter
     def pos(self, value):
-        pivot = self.pivot
-        self._pos = Vector(*value)
-        if self.pivot != pivot:
-            if self.added:
-                self.rm_from_space()
-            self.add_to_space()
+        if not self.static:
+            pivot = self.pivot
+            self._pos = Vector(*value)
+            if self.pivot != pivot:
+                if self.added:
+                    self.rm_from_space()
+                self.add_to_space()
 
     def get_nearby(self, distance=100):
         '''Get all space objects within a radius. Radii over 100 discouraged'''
@@ -250,9 +265,12 @@ class DamageSphere(SpaceObject):
         enum = 1
         total = len(self.atmospheres)
         for atmos in sorted(self.atmospheres, reverse=True):
+            alpha = int(0xff * (float(enum) / total))
             display.extend((
                 render.disk(
-                    (atmos.color + (0xff * (enum // total),)), atmos.size)))
+                    (atmos.color + (alpha,)),
+                    (0, 0),
+                    atmos.size),))
             enum += 1
         return display
 
@@ -267,7 +285,22 @@ class DamageSphere(SpaceObject):
                         sp_obj.affect.damage(
                             None, atmos.damage, atmos.dmg_type, self)
                         break
-            sp_obj.acl += (self.size / dist ** 2) * (self.pos - sp_obj.pos)
+
+
+class Gravity(SpaceObject):
+    gravity = 1.
+    def tick(self):
+        super(Gravity, self).tick()
+        for obj, dist in self.get_nearby():
+            if dist:
+                obj.acl += (self.gravity / dist ** 2) * (self.pos - obj.pos)
+
+
+
+class Static(SpaceObject):
+    def __init__(self, **kwargs):
+        super(Static, self).__init__(**kwargs)
+        self.static = True
 
 
 class Satallite(SpaceObject):
@@ -294,41 +327,58 @@ class Satallite(SpaceObject):
 
 
 class Ship(Damageable):
+    top_speed = 1
     def __init__(self, **kwargs):
         super(Ship, self).__init__(**kwargs)
-        self.stats = dict()
-        self.parts = shipparts.PartsContainer()
+        self.stats = defaultdict(lambda: 0.0)
+        self.parts = shipparts.PartsContainer(self)
         self.parts.sub((0, 0), shipparts.Cockpit())
+        self.thrust = [False, False, False, False]
 
-    def refresh_stats(self):
-        self.stats.clear()
+#     @property
+#     def dest(self):
+#         if not hasattr(self, '_dest'):
+#             return self.pos
+#         if isinstance(self._dest, SpaceObject):
+#             dest = self._dest.pos
+#             if self.pos.distance(dest) > 100:
+#                 self._dest = dest
+#             return dest
+#         else:
+#             return self._dest
+#
+#     @dest.setter
+#     def dest(self, value):
+#         if value is self.pos:
+#             del self._dest
+#         elif isinstance(value, SpaceObject):
+#             self._dest = value
+#         else:
+#             self._dest = Vector(*value)
+
+    def render(self):
+        display = super(Ship, self).render()
+        display.extend([render.disk(colors.VYOLET, (0, 0), 10)])
+        return display
+
+    def tick(self):
+        super(Ship, self).tick()
         for part in self.parts:
-            for stat in part.stats:
-                self.stats[stat] += part.stats[stat]
+            part.tick(self)
+        towards = Vector(self.thrust[0] - self.thrust[1],
+                         self.thrust[2] - self.thrust[3]).unit()
+        if towards and len(self.vel) < self.top_speed:
+            for part in self.parts:
+                amount = part.thrust(self) / self.stats['weight']
+                self.acl += towards * amount
 
-    @property
-    def dest(self):
-        if isinstance(self._dest, SpaceObject):
-            dest = self._dest.pos
-            if self.pos.distance(dest) > 100:
-                self._dest = dest
-            return dest
-        else:
-            return self._dest
-
-    @dest.setter
-    def dest(self, value):
-        if isinstance(value, SpaceObject):
-            self._dest = value
-        else:
-            self._dest = Vector(*value)
 
 
 #######################################
 # Primary classes
 #######################################
 
-class Sun(DamageSphere):
+class Sun(DamageSphere, Static):  # , Gravity):
     def get_atmospheres(self, key):
         rand = random.Random(key)
         atmos = []
@@ -345,7 +395,7 @@ class Sun(DamageSphere):
 class Planet(DamageSphere, Satallite, Mineable):
     def get_atmospheres(self, key):
         self.gaseous = bool(key & 1)
-        return [Atmosphere(100, (0xff, 0xff, 0xff), 0, 'none')]
+        return [Atmosphere(100, (0, 0xff, 0), 0, 'none')]
 
 
 class UserShip(Ship):
@@ -357,7 +407,7 @@ class UserShip(Ship):
 
     @property
     def starting_location(self):
-        return Vector.rect(200, random.randrange(360) * math.pi / 180)
+        return Vector.rect(3, random.randrange(360) * math.pi / 180)
 
 
 

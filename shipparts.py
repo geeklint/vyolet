@@ -17,9 +17,10 @@ This file is part of Vyolet.
 
 class PartsContainer(object):
 
-    MASK, N, S, E, W = 0b1111, 0b1000, 0b100, 0b10, 0b1
+#     MASK, N, S, E, W = 0b1111, 0b1000, 0b100, 0b10, 0b1
 
-    def __init__(self, (width, height)=(17, 13)):
+    def __init__(self, ship, (width, height)=(17, 13)):
+        self.ship = ship
         self.data = [[None] * height for _ in xrange(width)]
         self.size = (width, height)
         self.origin = (width // 2, height // 2)
@@ -47,6 +48,10 @@ class PartsContainer(object):
         x, y = self._shift((x, y))
         old = self.data[x][y]
         self.data[x][y] = value
+        if old is not None:
+            old.on_rm(self.ship)
+        if value is not None:
+            value.on_add(self.ship)
         return old
 
     def can_add(self, (x, y)):
@@ -85,11 +90,80 @@ class PartsContainer(object):
                     yield part
 
 
+all_parts = dict()
+
+def part_metaclass(name, parents, attr):
+    obj = type(name, parents, attr)
+    all_parts[attr['id_']] = obj
+    return obj
+
+
 class ShipPart(object):
-    pass
+    __metaclass__ = part_metaclass
+    id_ = -1
+
+    stats = dict()
+
+    def on_add(self, ship):
+        pass
+
+    def on_rm(self, ship):
+        pass
+
+    def thrust(self, ship):
+        return 0
+
+    def tick(self, ship):
+        pass
 
 
-class Cockpit(ShipPart):
-    pass
+class StatsMixin(ShipPart):
+    stats = dict()
+
+    def on_add(self, ship):
+        super(StatsMixin, self).on_add(ship)
+        for stat, value in self.stats.iteritems():
+            ship.stats[stat] += value
+
+    def on_rm(self, ship):
+        super(StatsMixin, self).on_rm(ship)
+        for stat, value in self.stats.iteritems():
+            ship.stats[stat] -= value
+
+
+class RegenMixin(ShipPart):
+
+    regen = dict()
+
+    def calc_regen(self, ship, stat, amount):
+        max_stat = ship.stats[''.join(('max_', stat))]
+        if ship.stats[stat] < max_stat:
+            amount = min(amount, max_stat - ship.stats[stat])
+            ship.stats[stat] += amount
+
+    def tick(self, ship):
+        super(RegenMixin, self).tick(ship)
+        for stat, value in self.regen.iteritems():
+            self.calc_regen(ship, stat, value)
+
+
+class Cockpit(StatsMixin, RegenMixin):
+    id_ = 0
+
+    stats = {
+        'weight': 100,
+        'max_energy': 100,
+    }
+
+    regen = {
+        'energy': 1,
+    }
+
+    def thrust(self, ship):
+        if ship.stats['energy'] > 1:
+            ship.stats['energy'] -= 1
+            return 1
+        else:
+            return 0
 
 

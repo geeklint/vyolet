@@ -35,16 +35,13 @@ PACKETS = [
     0x02, 'login', 'BB32p16s16p',  # (version,, name, authkey, room) c -> s
     0x03, 'login_confirm', 'x',  # () s -> c
 
-    0x10, 'client_info', 'BBB',  # (color,,, ) c -> s
-    0x11, 'viewpoint', 'I',  # (id, ) s -> c
-    0x12, 'flash_ui', 'BBBB',  # (what, color,,,) s -> c
-
     0x20, 'space_object', 'Iddf?',  # (id, pos,, direction, you) s -> c
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
     0x22, 'space_object_render', render.FMT,
-    0x23, 'space_object_name', 'I15pH',  # (id, name, operations) s -> c
+    0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
 
-    0x30, 'set_dest', 'dd',  # (x, y) c -> s
+#     0x30, 'set_dest', 'dd',  # (x, y) c -> s
+    0x30, 'thrust', '????',  # (n, s, e, w) c -> s
     0x31, 'edit_ship', 'x',  # () c -> s
     0x32, 'full_grid', '32p121H121B',  # (title, items, damage) s -> c
     0x33, 'small_grid', 'x',  # not implemented
@@ -139,6 +136,7 @@ class NetworkReciever(asyncore.dispatcher_with_send):
                 self.nr.send_packet, self.nr.packets.name_nums[name])
 
     def send_packet(self, packet, *args):
+        self.d('<', self.packets.num_names[packet], args)
         fmt = ''.join(('>', self.packets.num_fmts[packet]))
         self.send(struct.pack('>B', packet))
         self.send(struct.pack(fmt, *args))
@@ -150,16 +148,26 @@ class NetworkReciever(asyncore.dispatcher_with_send):
             try:
                 fmt = self.packets.num_fmts[packet]
             except KeyError:
+                print 'unk packet', hex(packet)
                 raise
             fmt = ''.join(('>', fmt))
             size = struct.calcsize(fmt)
             if len(data) > size:
                 args = struct.unpack(fmt, data[1:1 + size])
-                self.recv_callback(self.packets.num_names[packet], args)
+                name = self.packets.num_names[packet]
+                self.d('>', name, args)
+                self.recv_callback(name, args)
                 data = data[1 + size:]
             else:
                 break
         self.data = data
+
+    def d(self, rw, packet, args):
+        if packet == 'space_object':
+            return
+        sys.stderr.write(' '.join((rw, packet, repr(args), '\n')))
+        sys.stderr.flush()
+import sys
 
 
 class NetworkRecieverOLD(object):

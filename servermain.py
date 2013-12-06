@@ -17,46 +17,14 @@ This file is part of Vyolet.
 
 import asyncore
 import Queue
+import threading
 from functools import partial
 
 import events
 import gameloop
 import network
+import handler
 from console import console
-from version import Version
-import threading
-
-
-def handle_client(version, queue, nr, packet, args):
-    if nr.stage == 0:
-        if packet == 'handshake':
-            if args[0] == network.HANDSHAKE:
-                nr.stage = 1
-            else:
-                nr.sendp.disconnect('Bad handshake')
-        else:
-            return
-    elif nr.stage == 1:
-        if packet == 'login':
-            verj, vern, username, passkey, room = args
-            c_ver = Version('Vyolet', (verj, vern))
-            if not (c_ver == version):
-                nr.sendp.disconnect('Version Mismatch')
-                return
-            # TODO: verify passkey here
-            if room != 'default':
-                nr.sendp.disconnect('Invalid room')
-                return
-            nr.username = username
-            nr.stage = 2
-            queue.put((events.LOGIN, (username, nr)))
-            nr.sendp.login_confirm()
-        else:
-            return
-    else:
-        # main packet handlers
-        pass
-
 
 
 class Listener(asyncore.dispatcher):
@@ -86,7 +54,7 @@ class Listener(asyncore.dispatcher):
         nr = network.NetworkReciever(sock=conn, recv_callback=None)
         nr.stage = 0
         nr.recv_callback = partial(
-            handle_client, self.version, self.event_queue, nr)
+            handler.handle_client, self.version, self.event_queue, nr)
 
 
 def on_command(queue, cmd):

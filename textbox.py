@@ -18,16 +18,17 @@ This file is part of Vyolet.
 import pygame
 
 class TextBox(object):
-    text = ''
-    _pos = 0
 
-    def __init__(self, font, fontsize, color, maxsize, update, callback):
+    def __init__(
+            self, font, fontsize, color, maxsize, update, callback, text=''):
         self.font = font
         self.fontsize = fontsize
         self.color = color
         self.maxsize = maxsize
         self.update = update
         self.callback = callback
+        self.text = text
+        self.pos = len(text)
 
     @property
     def pos(self):

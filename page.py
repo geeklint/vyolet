@@ -23,6 +23,9 @@ class Page(object):
         screen.fill((0xff, 0x00, 0x00))
         pygame.display.flip()
 
+    def tick(self):
+        pass
+
     def input_quit(self):
         pass
 

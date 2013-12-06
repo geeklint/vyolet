@@ -22,8 +22,10 @@ import time
 from collections import defaultdict
 
 import events
+import render
 import spaceobjects
 import world_gen
+from console import console
 from utils import DataFile
 
 
@@ -63,9 +65,16 @@ class Game(object):
             'others': self.objects,
             'space': self.space}
 
+    def despawn_all(self):
+        while self.online:
+            username, (ship, source) = self.online.popitem()
+            ship.rm_from_space()
+            self.offline[username] = ship
+            source.sendp.disconnect('Server shutdown')
+
 
 def gameloop(queue):
-    with DataFile('game.dat', Game, pickle) as game:
+    with DataFile('game.dat', Game, pickle, load=False) as game:
         while True:
             time.sleep(.05)
             while True:
@@ -74,25 +83,27 @@ def gameloop(queue):
                 except Queue.Empty:
                     break
                 if event == events.QUIT:
+                    game.despawn_all()
                     return
+                elif event == events.RUN:
+                    args[0](game)
                 elif event == events.CMD:
                     if args[0] == 'stop':
                         queue.put((events.QUIT, ()))
                 elif event == events.LOGIN:
                     username, source = args
-                    print 'join:', username
+                    console.printf('{} logged in', username)
                     source.ship = game.spawn_ship(username, source)
             for obj in game.objects[:]:
                 if not obj.added:
                     continue
                 obj.tick()
-                for other in obj.get_nearby():
+                for other, _dist in obj.get_nearby():
                     if isinstance(other, spaceobjects.UserShip):
                         _ship, source = game.online[other.name]
-                        if source.req_render or obj.invalidate:
-                            for render in obj.render():
-                                source.sendp.render(obj.id_, *render)
-                        source.sendp.spaceobject(
+                        if obj.invalidate:
+                            render.send(source, obj)
+                        source.sendp.space_object(
                             obj.id_,
                             obj.pos[0], obj.pos[1], obj.direction,
                             other is obj)

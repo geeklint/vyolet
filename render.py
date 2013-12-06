@@ -17,15 +17,21 @@
 '''
 
 
-FMT = 'IB4b8l'  # (id, cmd, args,,,,,,,,, color,,,,)
+FMT = 'IB4B8l'  # (id, color,,, cmd, args,,,,,,,,,)
 
 # commands:
 (CLEAR, LINE, CIRCLE) = xrange(3)
 
+def send(nr, obj):
+    print repr(obj)
+    for render in obj.render():
+        nr.sendp.space_object_render(obj.id_, *render)
+
+
 def renderfunc(func):
     def wrapper(color, *args):
         color = (color + (0xff,))[:4]
-        return color + (func(*args) + (0, 0, 0, 0, 0, 0, 0, 0))[:8]
+        return color + (func(*args) + (0, 0, 0, 0, 0, 0, 0, 0))[:9]
     return wrapper
 
 @renderfunc
@@ -40,9 +46,9 @@ def line(points):
 
 @renderfunc
 def circle(pos, radius, stroke):
-    return (CIRCLE, pos, radius, stroke)
+    return (CIRCLE, pos[0], pos[1], radius, stroke)
 
 
 @renderfunc
 def disk(pos, radius):
-    return (CIRCLE, pos, radius, 0)
+    return (CIRCLE, pos[0], pos[1], radius, 0)

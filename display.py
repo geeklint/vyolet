@@ -45,6 +45,7 @@ def winloop(settings, screen, page):
     while True:
         clock.tick(settings['framerate'])
         poll_net(0.0, asyncore.socket_map)
+        page.tick()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 page.input_quit()
