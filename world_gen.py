@@ -53,9 +53,9 @@ class DefaultGenerator(Generator):
             spaceobjects.Planet(
                 orbit_origin=sun,
                 orbit_radius=game.generator_state.size,
-                orbit_speed=rand.randangle() / 360,
+                orbit_speed=rand.randangle() / 360 ** 2,
                 orbit_angle=rand.randangle(),
                 atmosphere=rand.randrange(2 ** 31),
                 **game.spaceobject_params)
-            game.generator_state.size += rand.randrange(100)
+            game.generator_state.size += rand.randrange(10)
             grow -= 1
