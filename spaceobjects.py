@@ -74,16 +74,19 @@ class Vector(namedtuple('Vector', 'x y')):
     def __pow__(self, exp):
         return Vector(self.x ** exp, self.y ** exp)
 
-    def __len__(self):
+    def __abs__(self):
         '''Magnitude'''
         return math.sqrt(self.x ** 2 + self.y ** 2)
 
     def unit(self):
-        '''Vector along this vector with len == 1'''
-        if len(self):
-            return self * (1. / len(self))
+        '''Vector along this vector with mag == 1'''
+        if abs(self):
+            return self * (1. / abs(self))
         else:
             return Vector.origin
+
+    def angle(self):
+        return math.atan2(self.y, self.x) * 180 / math.pi
 
     @classmethod
     def rect(cls, radius, angle):
@@ -353,14 +356,16 @@ class Ship(Damageable):
         super(Ship, self).tick()
         for part in self.parts:
             part.tick(self)
-        if self.thrust and len(self.vel) < self.top_speed:
-            thrust = len(self.thrust)
+        if self.thrust and abs(self.vel) < self.top_speed:
+            thrust = abs(self.thrust)
+            self.direction = self.thrust.angle()
             for part in self.parts:
                 amount = part.thrust(self, thrust) / self.stats['weight']
                 self.acl += self.thrust * amount
-        elif not self.thrust and len(self.vel):
+        elif not self.thrust and abs(self.vel):
+            thrust = min(.5, abs(self.vel))
             for part in self.parts:
-                amount = part.thrust(self, .5) / self.stats['weight']
+                amount = part.thrust(self, thrust) / self.stats['weight']
                 self.acl -= self.vel.unit() * amount
 
 
@@ -374,12 +379,12 @@ class Sun(DamageSphere, Static, Gravity):
         rand = random.Random(key)
         atmos = []
         size = 10
-        for _i in xrange(5):
+        for _i in xrange(50):
             dmg_type = 'true' if size < 100 else 'fire'
             dmg = 1000. / size
-            color = (0xff, int(0xff) * (size / 410.), 0)
+            color = (0xff, int(0xff) * (size / 1000.), 0)
             atmos.append(Atmosphere(size, color, dmg, dmg_type))
-            size += rand.triangular(100)
+            size += rand.triangular(20)
         return atmos
 
 
@@ -398,7 +403,7 @@ class UserShip(Ship):
 
     @property
     def starting_location(self):
-        return Vector.rect(3, random.randrange(360) * math.pi / 180)
+        return Vector.rect(5, random.randrange(360) * math.pi / 180)
 
     def tick(self):
         super(UserShip, self).tick()

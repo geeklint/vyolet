@@ -19,10 +19,10 @@ import pygame
 import clientgame
 import colors
 import display
+import drawing
 import network
 import page
 import textbox
-import utils
 from text import text
 
 class SingleplayerMenu(page.Page):
@@ -42,7 +42,7 @@ class MultiplayerMenu(page.Page):
         screen.fill(colors.BLACK)
         font = pygame.font.SysFont('monospace', 24)
         label = font.render(text.enter_address, True, colors.WHITE)
-        utils.blit_center(screen, label, (self.origin[0], size[1] // 3))
+        drawing.blit_center(screen, label, (self.origin[0], size[1] // 3))
         box = (int(size[0] * .12), self.origin[1] - 13,
                int(size[0] * .76), 24)
         pygame.draw.rect(screen, colors.WHITE, box, 2)
@@ -54,7 +54,7 @@ class MultiplayerMenu(page.Page):
 
     def update(self, textbox):
         self.textbox.color = colors.WHITE
-        utils.blit_center(self.screen, textbox.render(), self.origin)
+        drawing.blit_center(self.screen, textbox.render(), self.origin)
         pygame.display.flip()
 
     def enter(self, text):

@@ -22,9 +22,9 @@ import pygame.gfxdraw
 
 import colors
 import display
+import drawing
 import gamemenus
 import page
-import utils
 from text import text
 
 class MainMenu(page.Page):
@@ -68,7 +68,7 @@ class MainMenu(page.Page):
             label = font.render(texts[index], True, colors.WHITE)
             pos = cmath.rect(int(r / 2.5), angle + d / 2)
             pos = (ox + int(pos.real), oy + int(pos.imag))
-            utils.blit_center(screen, label, pos)
+            drawing.blit_center(screen, label, pos)
             angle += d
         pygame.display.flip()
 

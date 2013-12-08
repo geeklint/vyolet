@@ -14,11 +14,10 @@ This file is part of Vyolet.
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import math
+
 import socket
 import pygame
 from collections import defaultdict
-from functools import partial
 
 from text import text
 import colors
@@ -28,6 +27,7 @@ import network
 import page
 import render
 import utils
+import drawing
 
 
 class LoadingPage(page.Page):
@@ -48,7 +48,7 @@ class LoadingPage(page.Page):
         screen.fill(colors.BLACK)
         font = pygame.font.SysFont('monospace', 24)
         label = font.render(text.loading, True, colors.WHITE)
-        utils.blit_center(screen, label, self.origin)
+        drawing.blit_center(screen, label, self.origin)
         pygame.display.flip()
 
     def recv_callback(self, packet, args):
@@ -88,14 +88,13 @@ class SpaceSprite(pygame.sprite.DirtySprite):
 
     @direction.setter
     def direction(self, value):
-        self._direction = value
+        self._direction = -value
         self._rotate()
 
     def _rotate(self):
         image = self.original.copy()
         if self.direction:
-            image = pygame.transform.rotate(image,
-                                            self.direction * 180 / math.pi)
+            image = pygame.transform.rotate(image, self.direction)
         self.image = image
 
     def _resize_points(self, *points):
@@ -158,11 +157,16 @@ class GamePage(page.Page):
         self.origin = (0, 0)
         self.size = (0, 0)
         self.stats = (1, 1, 1, 1)
+        self.equiped = (0,) * 10
         self.model = None
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
-        self.bg_source = pygame.image.load(utils.ensure_res('stars.png'))
-        self.parts_source = pygame.image.load(utils.ensure_res('parts.png'))
+        self.bg_src = self.load_image('stars.png')
+        self.parts_src = self.load_image('parts.png')
+        self.equip_src = self.load_image('equipment.png')
+
+    def load_image(self, filename):
+        return pygame.image.load(utils.ensure_res(filename)).convert()
 
     @property
     def origin_x(self):
@@ -177,6 +181,10 @@ class GamePage(page.Page):
         y = int(self.size[1] * .10)
         size = (x * 8, y * 8)
         return pygame.Rect(x, y, size[0], size[1])
+
+    #######################################
+    # Main functions
+    #######################################
 
     def recv_callback(self, packet, args):
         if packet == 'disconnect':
@@ -200,17 +208,27 @@ class GamePage(page.Page):
 
     def input_click_down(self, (x, y), button):
         if self.model:
+            pass
+        elif y > self.size[1] * 6 / 7:
+            self.hud_click_down((x, y), button)
+        else:
+            offset = (self.size[0] / 2., self.size[1] / 2.)
+            factor = max(offset)
+            x = 0x7f * (x - offset[0]) / factor
+            y = 0x7f * (y - offset[1]) / factor
+            self.nr.sendp.thrust(x, y)
+
+    def input_click_up(self, (x, y), button):
+        if self.model:
             rect = self.model_rect
             if rect.collidepoint(x, y):
                 self.model.input_click_down(
                     (x + rect.x, y + rect.y), button)
             else:
                 self.model = None
-        else:
-            offset = max(self.size) / 2.
-            x = 0x7f * (x - offset) / offset
-            y = 0x7f * (y - offset) / offset
-            self.nr.sendp.thrust(x, y)
+        elif y > self.size[1] * 6 / 7:
+            self.hud_click_up((x, y), button)
+        self.nr.sendp.thrust(0, 0)
 
     def input_key_down(self, key, mod, code):
         pass
@@ -223,40 +241,88 @@ class GamePage(page.Page):
         self.size = size
         self.draw_bg(screen, size)
         SpaceSprite.group.draw(screen)
-        self.draw_hud(screen, size)
-        self.draw_model(screen, size)
+        self.hud_draw(screen, size)
+        self.model_draw(screen, size)
         pygame.display.flip()
 
-    def draw_bg(self, screen, size):
-        x = -self.origin[0] % 1600
-        y = -self.origin[1] % 900
-        cells = ((x - 1600, y - 900), (x, y - 900), (x + 1600, y - 900),
-                 (x - 1600, y), (x, y), (x + 1600, y),
-                 (x - 1600, y + 900), (x, y + 900), (x + 1600, y + 900))
-        for pos in cells:
-            rect = pygame.Rect(pos, (1600, 900))
-            screen.blit(self.bg_source, rect)
+    def tick(self):
+        self.draw(self.screen, self.size)
 
-    def draw_hud(self, screen, size):
-        width, height = size
-        x = width / 4
-        width = x * 2
-        y = height - 20
-        rect = pygame.Rect((x, y), (width, 20))
-        pygame.draw.rect(screen, (0x80, 0x80, 0x80), rect)
+    #######################################
+    # HUD
+    #######################################
+
+    hud_src = pygame.Surface((808, 128))
+
+    def hud_draw(self, screen, size):
+        # position info
+        text = self.font.render(repr(self.origin), True, colors.WHITE)
+        screen.blit(text, (0, 0))
+        # bg
+        width, height = size[0], size[1] / 7
+        origin_x = 0
+        origin_y = size[1] - height
+        pygame.draw.rect(
+            screen, colors.BLACK, (origin_x, origin_y, width, height))
+        pygame.draw.line(
+            screen, colors.GRAY,
+            (origin_x, origin_y), (origin_x + width, origin_y),
+            5)
+        # status bars
+        corigin_x = origin_x + width / 4
+        corigin_y = origin_y + height / 2
+        cwidth = width / 2
+        cheight = height / 2
+        bar_height = (height / 2 - 15) / 2
+        rect = (corigin_x, corigin_y, cwidth, cheight)
+        pygame.draw.rect(screen, colors.GRAY, rect)
+        cwidth -= 10
+        corigin_x += 5
+        corigin_y += 5
+        rect = (corigin_x, corigin_y, cwidth, bar_height)
+        pygame.draw.rect(screen, colors.BLACK, rect)
         energy = float(self.stats[0]) / (self.stats[1] or 1)
-        rect = pygame.Rect((x, y), (int(energy * width), 10))
-        pygame.draw.rect(screen, (0x00, 0x00, 0xff), rect)
+        rect = (corigin_x, corigin_y, energy * cwidth, bar_height)
+        pygame.draw.rect(screen, colors.BLUE, rect)
+        text = '%d/%d' % (self.stats[0], self.stats[1])
+        text = self.font.render(text, True, colors.WHITE)
+        pos = (corigin_x + cwidth / 2, corigin_y + bar_height / 2)
+        drawing.blit_center(screen, text, pos)
+        corigin_y += bar_height + 5
+        rect = (corigin_x, corigin_y, cwidth, bar_height)
+        pygame.draw.rect(screen, colors.BLACK, rect)
         fuel = float(self.stats[2]) / (self.stats[3] or 1)
-        rect = pygame.Rect((x, y + 10), (int(fuel * width), 10))
-        pygame.draw.rect(screen, (0xff, 0x00, 0x00), rect)
-        rect = pygame.Rect((x + width, y), (20, 20))
-        self.grid_button_rect = rect
-        pygame.draw.rect(screen, (0xff, 0xff, 0xff), rect)
-        surf = self.font.render(repr(self.origin), True, colors.WHITE)
-        screen.blit(surf, (0, 0))
+        rect = (corigin_x, corigin_y, fuel * cwidth, bar_height)
+        pygame.draw.rect(screen, colors.BROWN, rect)
+        text = '%d/%d' % (self.stats[2], self.stats[3])
+        text = self.font.render(text, True, colors.WHITE)
+        pos = (corigin_x + cwidth / 2, corigin_y + bar_height / 2)
+        drawing.blit_center(screen, text, pos)
+        # action buttons
+        corigin_x = origin_x + width / 4
+        corigin_y = origin_y + 5
+        cwidth = width / 2 - 5
+        cheight = height / 2
+        button_size = min(cheight, cwidth / 10)
+        corigin_x += (cheight - button_size) / 2
+        cheight = button_size
+        button_size = cwidth / 10
+        for item in self.equiped:
+            self.draw_icon(
+                screen, self.equip_src, item, (corigin_x, corigin_y))
+            corigin_x += button_size
 
-    def draw_model(self, screen, size):
+    def hud_click_down(self, (x, y), button):
+        pass
+
+    def hud_click_up(self, (x, y), button):
+        pass
+
+    #######################################
+    # Model
+    #######################################
+
+    def model_draw(self, screen, size):
         if self.model:
             x = int(size[0] * .10)
             y = int(size[1] * .10)
@@ -268,14 +334,25 @@ class GamePage(page.Page):
             rect = pygame.Rect(x, y, size[0], size[1])
             screen.blit(surf, rect)
 
-    def draw_part(self, screen, id_, pos):
-        offset = (id_ * 48 % self.parts_source.get_rect().width,
-                  int(id_ * 48 / self.parts_source.get_rect().width))
-        area = pygame.Rect(offset, (48, 48))
-        screen.blit(self.parts_source, pos, area)
+    #######################################
+    # Utility
+    #######################################
 
-    def tick(self):
-        self.draw(self.screen, self.size)
+    def draw_bg(self, screen, size):
+        x = -self.origin[0] % 1600
+        y = -self.origin[1] % 900
+        cells = ((x - 1600, y - 900), (x, y - 900), (x + 1600, y - 900),
+                 (x - 1600, y), (x, y), (x + 1600, y),
+                 (x - 1600, y + 900), (x, y + 900), (x + 1600, y + 900))
+        for pos in cells:
+            rect = pygame.Rect(pos, (1600, 900))
+            screen.blit(self.bg_src, rect)
+
+    def draw_icon(self, screen, source, id_, pos, size=(48, 48)):
+        offset = (id_ * size[0] % source.get_rect().width,
+                  int(id_ * size[1] / source.get_rect().width))
+        area = pygame.Rect(offset, size)
+        screen.blit(source, pos, area)
 
 
 class FullGridModel(object):
@@ -288,13 +365,8 @@ class FullGridModel(object):
         item_size = min(size[0] / 17, size[1] / 13)
         for x in xrange(17):
             for y in xrange(13):
-                rect = pygame.Rect(
-                    x * item_size, y * item_size, item_size, item_size)
-                pygame.draw.rect(screen, colors.BLACK, rect)
-                rect = pygame.Rect(
-                    x * item_size + 1, y * item_size + 1,
-                    item_size - 2, item_size - 2)
-                pygame.draw.rect(screen, colors.WHITE, rect)
+                self.gp.draw_icon(
+                    screen, self.gp.parts_src, 0, x * 48, y * 48)
 
     def input_click_down(self, (x, y), button):
         pass

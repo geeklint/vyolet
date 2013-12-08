@@ -83,15 +83,15 @@ class PartsContainer(object):
 
     def render(self, color):
         display = []
-        x = -5 * self.size[0] / 2
+        x = -10 * self.size[0] / 2
         for col in self.data:
-            y = -5 * self.size[1] / 2
+            y = -10 * self.size[1] / 2
             for part in col:
                 if part is not None:
                     display.append(
-                        render.rect(color, (x, y), (5, 5)))
-                y += 5
-            x += 5
+                        render.rect(color, (x, y), (10, 10)))
+                y += 10
+            x += 10
         return display
 
     def __iter__(self):
@@ -212,7 +212,7 @@ class FuelTank(StatsMixin):
     }
 
 
-class Rocket(StatsMixin):
+class RocketEngine(StatsMixin):
     id_ = 4
 
     stats = {
