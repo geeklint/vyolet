@@ -60,11 +60,11 @@ def main():
     options = parser.parse_args()
     if not os.path.isdir(options.rootdir):
         os.makedirs(options.rootdir)
-    os.chdir(options.rootdir)
     if options.server:
         import servermain as runmain
     else:
         import clientmain as runmain
+    os.chdir(options.rootdir)
     return runmain.main(version)
 
 

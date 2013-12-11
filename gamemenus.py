@@ -34,14 +34,14 @@ class MultiplayerMenu(page.Page):
         self.textbox = textbox.TextBox(
             'monospace', 18, colors.WHITE, 100, self.update, self.enter,
             '0.0.0.0')
+        self.font = pygame.font.SysFont('monospace', 24)
 
     def draw(self, screen, size):
         self.screen = screen
         self.size = size
         self.origin = size[0] // 2, size[1] // 2
         screen.fill(colors.BLACK)
-        font = pygame.font.SysFont('monospace', 24)
-        label = font.render(text.enter_address, True, colors.WHITE)
+        label = self.font.render(text.enter_address, True, colors.WHITE)
         drawing.blit_center(screen, label, (self.origin[0], size[1] // 3))
         box = (int(size[0] * .12), self.origin[1] - 13,
                int(size[0] * .76), 24)

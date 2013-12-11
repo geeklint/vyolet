@@ -66,6 +66,7 @@ def winloop(settings, screen, page):
                 page.input_key_up(event.key, event.mod)
             elif event.type == SET_PAGE:
                 page = event.page
+                page.init(settings)
                 page.draw(screen, screen.get_size())
             elif event.type == RECV_PACKET:
                 page.recv_packet(event.packet, event.args)

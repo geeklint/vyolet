@@ -162,6 +162,7 @@ class GamePage(page.Page):
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
         self.bg_src = self.load_image('stars.png')
+        self.hud_src = self.load_image('hud.png')
         self.parts_src = self.load_image('parts.png')
         self.equip_src = self.load_image('equipment.png')
 
@@ -231,7 +232,18 @@ class GamePage(page.Page):
         self.nr.sendp.thrust(0, 0)
 
     def input_key_down(self, key, mod, code):
-        pass
+
+        try:
+            cmd = self.settings['keys'].index(key)
+        except ValueError:
+            pass
+        else:
+            if cmd < 10:
+                self.nr.sendp.action(cmd)
+            elif cmd == 10:
+                self.nr.sendp.edit_ship()
+            elif cmd == 11:
+                pass
 
     def input_key_up(self, key, mod):
         pass
@@ -252,65 +264,26 @@ class GamePage(page.Page):
     # HUD
     #######################################
 
-    hud_src = pygame.Surface((808, 128))
-
     def hud_draw(self, screen, size):
-        # position info
-        text = self.font.render(repr(self.origin), True, colors.WHITE)
-        screen.blit(text, (0, 0))
-        # bg
-        width, height = size[0], size[1] / 7
-        origin_x = 0
-        origin_y = size[1] - height
-        pygame.draw.rect(
-            screen, colors.BLACK, (origin_x, origin_y, width, height))
-        pygame.draw.line(
-            screen, colors.GRAY,
-            (origin_x, origin_y), (origin_x + width, origin_y),
-            5)
-        # status bars
-        corigin_x = origin_x + width / 4
-        corigin_y = origin_y + height / 2
-        cwidth = width / 2
-        cheight = height / 2
-        bar_height = (height / 2 - 15) / 2
-        rect = (corigin_x, corigin_y, cwidth, cheight)
+        image = self.hud_src.copy()
+        missing = 1 - float(self.stats[0]) / (self.stats[1] or 1)
+        width = 514 * missing
+        x = 661 - width
+        rect = pygame.Rect(x, 79, width, 17)
+        pygame.draw.rect(image, colors.BLACK, rect)
+        missing = 1 - float(self.stats[2]) / (self.stats[3] or 1)
+        width = 514 * missing
+        x = 661 - width
+        rect = pygame.Rect(x, 102, width, 17)
+        pygame.draw.rect(image, colors.BLACK, rect)
+        height = min(size[1] / 7, 128)
+        width = int(height / 128. * 808)
+        image = pygame.transform.smoothscale(image, (width, height))
+        x = size[0] / 2 - width / 2
+        y = size[1] - height
+        rect = pygame.Rect(0, y, size[0], height)
         pygame.draw.rect(screen, colors.GRAY, rect)
-        cwidth -= 10
-        corigin_x += 5
-        corigin_y += 5
-        rect = (corigin_x, corigin_y, cwidth, bar_height)
-        pygame.draw.rect(screen, colors.BLACK, rect)
-        energy = float(self.stats[0]) / (self.stats[1] or 1)
-        rect = (corigin_x, corigin_y, energy * cwidth, bar_height)
-        pygame.draw.rect(screen, colors.BLUE, rect)
-        text = '%d/%d' % (self.stats[0], self.stats[1])
-        text = self.font.render(text, True, colors.WHITE)
-        pos = (corigin_x + cwidth / 2, corigin_y + bar_height / 2)
-        drawing.blit_center(screen, text, pos)
-        corigin_y += bar_height + 5
-        rect = (corigin_x, corigin_y, cwidth, bar_height)
-        pygame.draw.rect(screen, colors.BLACK, rect)
-        fuel = float(self.stats[2]) / (self.stats[3] or 1)
-        rect = (corigin_x, corigin_y, fuel * cwidth, bar_height)
-        pygame.draw.rect(screen, colors.BROWN, rect)
-        text = '%d/%d' % (self.stats[2], self.stats[3])
-        text = self.font.render(text, True, colors.WHITE)
-        pos = (corigin_x + cwidth / 2, corigin_y + bar_height / 2)
-        drawing.blit_center(screen, text, pos)
-        # action buttons
-        corigin_x = origin_x + width / 4
-        corigin_y = origin_y + 5
-        cwidth = width / 2 - 5
-        cheight = height / 2
-        button_size = min(cheight, cwidth / 10)
-        corigin_x += (cheight - button_size) / 2
-        cheight = button_size
-        button_size = cwidth / 10
-        for item in self.equiped:
-            self.draw_icon(
-                screen, self.equip_src, item, (corigin_x, corigin_y))
-            corigin_x += button_size
+        screen.blit(image, (x, y))
 
     def hud_click_down(self, (x, y), button):
         pass
@@ -348,11 +321,17 @@ class GamePage(page.Page):
             rect = pygame.Rect(pos, (1600, 900))
             screen.blit(self.bg_src, rect)
 
-    def draw_icon(self, screen, source, id_, pos, size=(48, 48)):
+    def draw_icon(self, screen, source, pos, id_, aux=0, size=(48, 48)):
         offset = (id_ * size[0] % source.get_rect().width,
                   int(id_ * size[1] / source.get_rect().width))
         area = pygame.Rect(offset, size)
         screen.blit(source, pos, area)
+        if aux:
+            pygame.draw.line(
+                screen,
+                (0xff - aux, aux, 0),
+                (0, size[1] - 2), (size[0] * aux / 255., size[1] - 2),
+                2)
 
 
 class FullGridModel(object):
@@ -363,10 +342,11 @@ class FullGridModel(object):
         self.screen = screen
         self.size = size
         item_size = min(size[0] / 17, size[1] / 13)
+        items = iter(self.items)
         for x in xrange(17):
             for y in xrange(13):
                 self.gp.draw_icon(
-                    screen, self.gp.parts_src, 0, x * 48, y * 48)
+                    screen, self.gp.parts_src, (x * 48, y * 48), next(items))
 
     def input_click_down(self, (x, y), button):
         pass

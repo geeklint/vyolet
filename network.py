@@ -41,9 +41,9 @@ PACKETS = [
     0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
     0x24, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
 
-    0x30, 'thrust', 'bb',  # (x, y) c -> s
+    0x30, 'set_color', 'BBB',  # (r, g, b) c -> s
     0x31, 'edit_ship', 'x',  # () c -> s
-    0x32, 'full_grid', 'x',  # (title, items, damage) s -> c
+    0x32, 'full_grid', '',  # (items, damage) s -> c
     0x33, 'small_grid', 'x',  # not implemented
     0x34, 'cargo_clear', 'x',  # () s <-> c (also, req)
     0x35, 'cargo_item', 'HB',  # (item, damage) s -> c
@@ -52,7 +52,8 @@ PACKETS = [
     0x38, 'engineering_option', 'H',  # (item,) s -> c
     0x39, 'engineer_item', 'H',  # (item,) c -> s
 
-#     0x40, 'operate', 'IH',  # (target, operation) c -> s
+    0x40, 'thrust', 'bb',  # (direction,,) c -> s
+    0x41, 'action', 'B',  # (action,) c -> s
 
     0xff, 'disconnect', '32p',  # (reason, ) c <-> s
 ]
