@@ -20,12 +20,12 @@ import math
 
 import pygame.gfxdraw
 
-import colors
 import display
 import drawing
 import gamemenus
 import page
 from text import text
+from utils import colors
 
 class MainMenu(page.Page):
     highlight = None

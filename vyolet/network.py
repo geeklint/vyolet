@@ -23,7 +23,7 @@ import struct
 from collections import namedtuple
 from functools import partial
 
-import render
+from model import render
 
 
 HANDSHAKE = '\x69\x83\x82\xe2\xf4\x63\x22\x3b\x13\x91\xba\x28\x9b\x6f\x3d\x1d'

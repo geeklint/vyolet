@@ -17,7 +17,7 @@ This file is part of Vyolet.
 import pygame
 
 import clientgame
-import colors
+from utils import colors
 import display
 import drawing
 import network

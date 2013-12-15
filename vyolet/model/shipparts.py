@@ -14,7 +14,7 @@ This file is part of Vyolet.
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
-import render
+from . import render
 
 class PartsContainer(object):
 

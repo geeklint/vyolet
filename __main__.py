@@ -21,7 +21,7 @@ import os
 import platform
 import sys
 
-from version import Version
+from vyolet.utils.version import Version
 
 APP_NAME = 'Vyolet'
 VERSION = (0, 0, 'dev')
@@ -61,9 +61,9 @@ def main():
     if not os.path.isdir(options.rootdir):
         os.makedirs(options.rootdir)
     if options.server:
-        import servermain as runmain
+        import vyolet.servermain as runmain
     else:
-        import clientmain as runmain
+        import vyolet.clientmain as runmain
     os.chdir(options.rootdir)
     return runmain.main(version)
 

@@ -20,14 +20,14 @@ import pygame
 from collections import defaultdict
 
 from text import text
-import colors
 import display
 import mainmenu
 import network
 import page
-import render
 import utils
 import drawing
+from utils import colors
+from model import render
 
 
 class LoadingPage(page.Page):

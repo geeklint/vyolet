@@ -16,9 +16,12 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import cmath
+import math
 import os
 import shutil
 import zipfile
+from collections import namedtuple
 
 class DataFile(object):
     def __init__(self, filename, default, pickler, load=True):
@@ -58,8 +61,10 @@ def ensure_res(res):
                                        dstfile)
     return dst
 
+
 def singleton(item):
     return item()
+
 
 @singleton
 class Nil(object):
@@ -71,3 +76,62 @@ class Nil(object):
 
     def __getitem__(self, item):
         return self
+
+
+class Vector(namedtuple('Vector', 'x y')):
+    '''Class to represent vectors'''
+
+    def distance(self, other):
+        '''Return the straight-line distance from this vector to another'''
+        return math.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2)
+
+    def __neg__(self):
+        '''Negative vector'''
+        return Vector(-self.x, -self.y)
+
+    def __add__(self, other):
+        '''Vector addition'''
+        return Vector(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        '''Vector subtraction'''
+        return Vector(self.x - other.x, self.y - other.y)
+
+    def __mul__(self, other):
+        '''Dot product when by Vector, scale otherwise'''
+        if isinstance(other, Vector):
+            return self.x * other.x + self.y * other.y
+        else:
+            return Vector(self.x * other, self.y * other)
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __div__(self, div):
+        return self * (1. / div)
+
+    def __pow__(self, exp):
+        return Vector(self.x ** exp, self.y ** exp)
+
+    def __abs__(self):
+        '''Magnitude'''
+        return math.sqrt(self.x ** 2 + self.y ** 2)
+
+    def unit(self):
+        '''Vector along this vector with mag == 1'''
+        if abs(self):
+            return self * (1. / abs(self))
+        else:
+            return Vector.origin
+
+    def angle(self):
+        return math.atan2(self.y, self.x) * 180 / math.pi
+
+    @classmethod
+    def rect(cls, radius, angle):
+        z = cmath.rect(radius, angle)
+        return cls(z.real, z.imag)
+
+    origin = (0.0, 0.0)
+
+Vector.origin = Vector(0.0, 0.0)

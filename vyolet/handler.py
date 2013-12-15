@@ -19,9 +19,8 @@ from functools import partial
 
 import events
 import network
-import render
-import spaceobjects
-from version import Version
+from utils import Vector
+from utils.version import Version
 
 
 def handle_client(version, queue, nr, packet, args):
@@ -35,7 +34,7 @@ def handle_client(version, queue, nr, packet, args):
             return
     elif nr.stage == 1:
         if packet == 'login':
-            verj, vern, username, passkey, room = args
+            verj, vern, username, _passkey, room = args
             c_ver = Version('Vyolet', (verj, vern))
             if not (c_ver == version):
                 nr.sendp.disconnect('Version Mismatch')
@@ -56,12 +55,23 @@ def handle_client(version, queue, nr, packet, args):
             queue.put((events.LOGOUT, (nr.username,)))
         elif packet == 'space_object_req_render':
             queue.put((events.RUN, (partial(send_render, nr, args[0]),)))
-        elif packet == 'thrust':
-            nr.ship.thrust = spaceobjects.Vector(*args) / 128
+        elif packet == 'set_color':
+            color = args
+            if sum(color) < 0x80:
+                factor = int(0x80 / sum(color))
+                r, g, b = color
+                color = (r * factor, g * factor, b * factor)
+            nr.ship.color = color
+            nr.ship.invalidate = True
         elif packet == 'edit_ship':
             nr.sendp.full_grid()
+        elif packet == 'thrust':
+            nr.ship.thrust = Vector(*args) / 128
+        elif packet == 'action':
+            if args[0] < 10:
+                nr.ship.equipment[args[0]].act(nr.ship)
 
 
 def send_render(nr, id_, game):
     if id_ in game.objects:
-        render.send(nr, game.objects[id_])
+        game.objects[id_].invalidate = True
