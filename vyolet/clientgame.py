@@ -159,6 +159,7 @@ class GamePage(page.Page):
         self.stats = (1, 1, 1, 1)
         self.equiped = (0,) * 10
         self.model = None
+        self.autopilot = True
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
         self.bg_src = self.load_image('stars.png')
@@ -213,11 +214,15 @@ class GamePage(page.Page):
         elif y > self.size[1] * 6 / 7:
             self.hud_click_down((x, y), button)
         else:
-            offset = (self.size[0] / 2., self.size[1] / 2.)
-            factor = max(offset)
-            x = 0x7f * (x - offset[0]) / factor
-            y = 0x7f * (y - offset[1]) / factor
-            self.nr.sendp.thrust(x, y)
+            if self.autopilot:
+                self.nr.sendp.set_dest((self.origin_x + x) / 100.,
+                                       (self.origin_y + y) / 100.)
+            else:
+                offset = (self.size[0] / 2., self.size[1] / 2.)
+                factor = max(offset)
+                x = 0x7f * (x - offset[0]) / factor
+                y = 0x7f * (y - offset[1]) / factor
+                self.nr.sendp.thrust(x, y)
 
     def input_click_up(self, (x, y), button):
         if self.model:
@@ -229,7 +234,8 @@ class GamePage(page.Page):
                 self.model = None
         elif y > self.size[1] * 6 / 7:
             self.hud_click_up((x, y), button)
-        self.nr.sendp.thrust(0, 0)
+        if not self.autopilot:
+            self.nr.sendp.thrust(0, 0)
 
     def input_key_down(self, key, mod, code):
 
@@ -244,13 +250,25 @@ class GamePage(page.Page):
                 self.nr.sendp.edit_ship()
             elif cmd == 11:
                 pass
+            elif cmd == 12:
+                self.autopilot = not self.autopilot
+                self.nr.sendp.thrust(0, 0)
 
     def input_key_up(self, key, mod):
         pass
 
     def draw(self, screen, size):
+        if size != self.size:
+            self.full_draw(screen, size)
+        else:
+            self.delta_draw(screen, size)
         self.screen = screen
         self.size = size
+
+    def full_draw(self, screen, size):
+        self.delta_draw(screen, size)
+
+    def delta_draw(self, screen, size):
         self.draw_bg(screen, size)
         SpaceSprite.group.draw(screen)
         self.hud_draw(screen, size)
@@ -318,8 +336,9 @@ class GamePage(page.Page):
                  (x - 1600, y), (x, y), (x + 1600, y),
                  (x - 1600, y + 900), (x, y + 900), (x + 1600, y + 900))
         for pos in cells:
-            rect = pygame.Rect(pos, (1600, 900))
-            screen.blit(self.bg_src, rect)
+            if -1600 < pos[0] < 1600 and -900 < pos[1] < 900:
+                rect = pygame.Rect(pos, (1600, 900))
+                screen.blit(self.bg_src, rect)
 
     def draw_icon(self, screen, source, pos, id_, aux=0, size=(48, 48)):
         offset = (id_ * size[0] % source.get_rect().width,

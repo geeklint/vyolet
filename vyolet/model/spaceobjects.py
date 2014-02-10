@@ -283,11 +283,34 @@ class Ship(Damageable):
         self.stats = defaultdict(lambda: 0.0)
         self.parts = shipparts.PartsContainer(self)
         self.parts.sub((0, 0), shipparts.Cockpit())
-        self.thrust = Vector(0, 0)
+        self.autopilot = False
+        self.last_acl = None
         self.equipment = [lambda ship: None] * 10
 
     def affect_damage(self, direction, amount, dmg_type, cause):
         pass
+
+    _thrust = Vector.origin
+    @property
+    def thrust(self):
+        return self._thrust
+
+    @thrust.setter
+    def thrust(self, value):
+        self._thrust = value
+        self.autopilot = False
+
+    _dest = Vector.origin
+    @property
+    def dest(self):
+        return self._dest
+
+    @dest.setter
+    def dest(self, value):
+        self._dest = value
+        self.autopilot = True
+        self.ap_t = 0
+        self.ap_working_thrust = None
 
     def render(self):
         display = super(Ship, self).render()
@@ -298,17 +321,33 @@ class Ship(Damageable):
         super(Ship, self).tick()
         for part in self.parts:
             part.tick(self)
-        if self.thrust and abs(self.vel) < self.top_speed:
+        if self.autopilot:
+            towards = self.dest - self.pos
+#             if abs(towards) < .1 and self.vel < .01:
+#                 self.vel = Vector.origin
+#                 return
+            slowing_acl = (self.vel * towards) / (2 * abs(towards))
+            thrust = 0
+            for part in self.parts:
+                thrust += part.thrust(self, 1) / self.stats['weight']
+            if self.ap_working_thrust is None:
+                self.ap_working_thrust = thrust
+            self.ap_working_thrust = (self.ap_working_thrust + thrust) / 2
+            if self.ap_working_thrust < slowing_acl:
+                thrust = -thrust
+            self.direction = towards.angle()
+            self.acl += thrust * towards.unit()
+            with open('/home/geeklint/tmp/vy_ap/ap.dat', 'a') as datfile:
+                self.ap_t += 1
+                data = (self.ap_t, self.stats['energy'],
+                        thrust, abs(self.acl), abs(self.vel), abs(towards), '\n')
+                datfile.write('\t\t'.join(str(i) for i in data))
+        else:
             thrust = abs(self.thrust)
             self.direction = self.thrust.angle()
             for part in self.parts:
                 amount = part.thrust(self, thrust) / self.stats['weight']
                 self.acl += self.thrust * amount
-        elif not self.thrust and abs(self.vel):
-            thrust = min(.5, abs(self.vel))
-            for part in self.parts:
-                amount = part.thrust(self, thrust) / self.stats['weight']
-                self.acl -= self.vel.unit() * amount
 
 
 

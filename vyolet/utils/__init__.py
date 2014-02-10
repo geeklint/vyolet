@@ -45,13 +45,16 @@ class DataFile(object):
 
 
 RES_PREFIX = 'res'
+# need to do this at import time because we cd later
+ABS_FILE = os.path.abspath(__file__)
 
 def ensure_res(res):
     if not os.path.isdir(RES_PREFIX):
         os.makedirs(RES_PREFIX)
     dst = os.path.join(RES_PREFIX, res)
     if not os.path.exists(dst):
-        container = os.path.dirname(__file__)
+        dirname = os.path.dirname
+        container = dirname(dirname(dirname(ABS_FILE)))
         if os.path.isdir(container):
             shutil.copy(os.path.join(container, dst), dst)
         else:

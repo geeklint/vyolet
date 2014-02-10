@@ -19,7 +19,7 @@ import json
 
 
 def _set_lang(lang):
-    with DataFile(ensure_res('.'.join((lang, 'lang'))), {}, json) as data:
+    with DataFile(ensure_res('.'.join((lang, 'lang'))), None, json) as data:
         Text._data.update(data)
 
 

@@ -67,6 +67,8 @@ def handle_client(version, queue, nr, packet, args):
             nr.sendp.full_grid()
         elif packet == 'thrust':
             nr.ship.thrust = Vector(*args) / 128
+        elif packet == 'set_dest':
+            nr.ship.dest = Vector(*args)
         elif packet == 'action':
             if args[0] < 10:
                 nr.ship.equipment[args[0]].act(nr.ship)

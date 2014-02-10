@@ -53,7 +53,8 @@ PACKETS = [
     0x39, 'engineer_item', 'H',  # (item,) c -> s
 
     0x40, 'thrust', 'bb',  # (direction,,) c -> s
-    0x41, 'action', 'B',  # (action,) c -> s
+    0x41, 'set_dest', 'dd',  # (dest,,) c -> s
+    0x42, 'action', 'B',  # (action,) c -> s
 
     0xff, 'disconnect', '32p',  # (reason, ) c <-> s
 ]
