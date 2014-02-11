@@ -177,7 +177,6 @@ class Cockpit(StatsMixin, RegenMixin):
 
     stats = {
         'weight': 200,
-        'energy': 100,
         'max_energy': 100,
         'fuel': 100,
         'max_fuel': 100,
