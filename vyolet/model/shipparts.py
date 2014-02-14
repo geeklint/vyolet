@@ -181,6 +181,7 @@ class Cockpit(StatsMixin, RegenMixin):
         'max_energy': 100,
         'fuel': 100,
         'max_fuel': 100,
+        'range': 5,
     }
 
     regen = {

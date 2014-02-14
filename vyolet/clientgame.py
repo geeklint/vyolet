@@ -149,12 +149,22 @@ class SpriteFactory(defaultdict):
         return sprite
 
 
+class CursorSprite(pygame.sprite.Sprite):
+    def __init__(self):
+        self.image = pygame.Surface((1, 1))
+
+    def __call__(self, x, y):
+        self.rect = pygame.Rect(x, y, 1, 1)
+        return self
+
+
 class GamePage(page.Page):
     def __init__(self, nr):
         self.nr = nr
         nr.recv_callback = self.recv_callback
         self.objects = SpriteFactory(self)
         self.origin = (0, 0)
+        self.cursor_sprite = CursorSprite()
         self.size = (0, 0)
         self.stats = (1, 1, 1, 1)
         self.equiped = (0,) * 10
@@ -211,10 +221,16 @@ class GamePage(page.Page):
     def input_click_down(self, (x, y), button):
         if self.model:
             pass
-        elif y > self.size[1] * 6 / 7:
+        elif y > min(self.size[1] * 6 / 7, self.size[1] - 128):
             self.hud_click_down((x, y), button)
         else:
-            if self.autopilot:
+            targets = pygame.sprite.spritecollide(
+                self.cursor_sprite(x, y), SpaceSprite.group, False,
+                pygame.sprite.collide_mask)
+            if targets:
+                print 'targets'
+                self.nr.sendp.affect(self.affect, targets[0].id_)
+            elif self.autopilot:
                 self.nr.sendp.set_dest((self.origin_x + x) / 100.,
                                        (self.origin_y + y) / 100.)
             else:
@@ -238,7 +254,6 @@ class GamePage(page.Page):
             self.nr.sendp.thrust(0, 0)
 
     def input_key_down(self, key, mod, code):
-
         try:
             cmd = self.settings['keys'].index(key)
         except ValueError:
@@ -253,6 +268,8 @@ class GamePage(page.Page):
             elif cmd == 12:
                 self.autopilot = not self.autopilot
                 self.nr.sendp.thrust(0, 0)
+            elif cmd == 13:
+                self.affect = int(not self.affect)
 
     def input_key_up(self, key, mod):
         pass

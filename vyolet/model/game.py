@@ -35,6 +35,7 @@ class Game(object):
         self.offline = dict()
         self.generator = world_gen.DefaultGenerator()
         self.generator.init(self)
+        self.tick_count = 0
 
     def user_login(self, username, source):
         if username in self.offline:
@@ -75,10 +76,11 @@ class Game(object):
             source.sendp.disconnect(message)
 
     def tick(self):
+        self.tick_count = count = (self.tick_count + 1) % 24
         for obj in self.objects[:]:
             if not obj.added:
                 continue
-            obj.tick()
+            obj.tick(count)
             for other, _dist in obj.get_nearby():
                 if isinstance(other, spaceobjects.UserShip):
                     _ship, source = self.online[other.name]

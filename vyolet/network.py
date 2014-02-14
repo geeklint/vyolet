@@ -54,7 +54,8 @@ PACKETS = [
 
     0x40, 'thrust', 'bb',  # (direction,,) c -> s
     0x41, 'set_dest', 'dd',  # (dest,,) c -> s
-    0x42, 'action', 'B',  # (action,) c -> s
+    0x42, 'action', 'Bff',  # (action, x, y) c -> s
+    0x43, 'affect', 'BI',  # (affect, target) c -> s
 
     0xff, 'disconnect', '32p',  # (reason, ) c <-> s
 ]

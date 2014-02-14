@@ -72,6 +72,9 @@ def handle_client(version, queue, nr, packet, args):
         elif packet == 'action':
             if args[0] < 10:
                 nr.ship.equipment[args[0]].act(nr.ship)
+        elif packet == 'affect':
+            pass
+
 
 
 def send_render(nr, id_, game):

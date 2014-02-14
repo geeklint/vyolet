@@ -157,7 +157,7 @@ class SpaceObject(object):
         self.rm_from_space()
         self.others[self.id_] = None
 
-    def tick(self):
+    def tick(self, count):
         self.pos += self.vel
         self.vel += self.acl
         self.acl = Vector.origin
@@ -221,8 +221,8 @@ class DamageSphere(SpaceObject):
             enum += 1
         return display
 
-    def tick(self):
-        super(DamageSphere, self).tick()
+    def tick(self, count):
+        super(DamageSphere, self).tick(count)
         for sp_obj, dist in self.get_nearby():
             if sp_obj is self:
                 continue
@@ -236,8 +236,8 @@ class DamageSphere(SpaceObject):
 
 class Gravity(SpaceObject):
     gravity = .00001
-    def tick(self):
-        super(Gravity, self).tick()
+    def tick(self, count):
+        super(Gravity, self).tick(count)
         for obj, dist in self.get_nearby():
             if dist:
                 acl = Vector.origin
@@ -269,8 +269,8 @@ class Satallite(SpaceObject):
             origin = Vector(*self.orbit_origin)
         return origin + rel_pos
 
-    def tick(self):
-        super(Satallite, self).tick()
+    def tick(self, count):
+        super(Satallite, self).tick(count)
         self.orbit_angle += self.orbit_speed
         self.pos = self.orbit_pos()
 
@@ -284,11 +284,11 @@ class Ship(Damageable):
         self.parts = shipparts.PartsContainer(self)
         self.parts.sub((0, 0), shipparts.Cockpit())
         self.autopilot = False
-        self.last_acl = None
+        self.target = None
         self.equipment = [lambda ship: None] * 10
 
     def affect_damage(self, direction, amount, dmg_type, cause):
-        pass
+        pass  # TODO
 
     _thrust = Vector.origin
     @property
@@ -309,6 +309,8 @@ class Ship(Damageable):
     def dest(self, value):
         self._dest = value
         self.autopilot = True
+        self.ap_last_d = self.pos.distance(value)
+        self.ap_halfway = .5 * self.ap_last_d
         self.ap_t = 0
         self.ap_working_thrust = None
 
@@ -317,37 +319,48 @@ class Ship(Damageable):
         display.extend(self.parts.render(self.color))
         return display
 
-    def tick(self):
-        super(Ship, self).tick()
+    def tick(self, count):
+        super(Ship, self).tick(count)
         for part in self.parts:
             part.tick(self)
         if self.autopilot:
             towards = self.dest - self.pos
-#             if abs(towards) < .1 and self.vel < .01:
-#                 self.vel = Vector.origin
-#                 return
-            slowing_acl = (self.vel * towards) / (2 * abs(towards))
-            thrust = 0
-            for part in self.parts:
-                thrust += part.thrust(self, 1) / self.stats['weight']
-            if self.ap_working_thrust is None:
-                self.ap_working_thrust = thrust
-            self.ap_working_thrust = (self.ap_working_thrust + thrust) / 2
-            if self.ap_working_thrust < slowing_acl:
-                thrust = -thrust
-            self.direction = towards.angle()
-            self.acl += thrust * towards.unit()
-            with open('/home/geeklint/tmp/vy_ap/ap.dat', 'a') as datfile:
-                self.ap_t += 1
-                data = (self.ap_t, self.stats['energy'],
-                        thrust, abs(self.acl), abs(self.vel), abs(towards), '\n')
-                datfile.write('\t\t'.join(str(i) for i in data))
+            if abs(towards) < .01 and abs(self.vel) < .01:
+                self.pos = self.dest
+                self.vel = Vector.origin
+                self.autopilot = False
+            else:
+                thrust = 0
+                for part in self.parts:
+                    thrust += part.thrust(self, 1) / self.stats['weight']
+                if abs(towards) <= self.ap_halfway:
+                    if self.ap_last_d < abs(towards):
+                        self.dest = self.dest  # redo autopilot
+                    else:
+                        thrust = -thrust
+                self.ap_last_d = abs(towards)
+                self.direction = towards.angle()
+                self.acl += thrust * towards.unit()
         else:
             thrust = abs(self.thrust)
             self.direction = self.thrust.angle()
             for part in self.parts:
                 amount = part.thrust(self, thrust) / self.stats['weight']
                 self.acl += self.thrust * amount
+        if self.target:
+            affect, id_ = self.target
+            target_obj = self.others[id_]
+            if self.pos.distance(target_obj.pos) > self.stats['range']:
+                self.target = None
+            else:
+                if affect == 0:  # attack
+                    direction = (self.pos - target_obj.pos).direction()
+                    amounts = defaultdict(lambda: 0)
+                    for type_, amount in amounts.iteritems():
+                        target_obj.affect.damage(
+                            direction, amount, type_, self)
+                elif affect == 1:  # mine
+                    pass
 
 
 
@@ -386,8 +399,8 @@ class UserShip(Ship):
     def starting_location(self):
         return Vector.rect(5, random.randrange(360) * math.pi / 180)
 
-    def tick(self):
-        super(UserShip, self).tick()
+    def tick(self, count):
+        super(UserShip, self).tick(count)
         self.conn.sendp.ship_stats(
             self.stats['energy'],
             self.stats['max_energy'],
