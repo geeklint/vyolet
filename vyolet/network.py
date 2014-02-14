@@ -35,26 +35,27 @@ PACKETS = [
     0x02, 'login', 'BB32p16s16p',  # (version,, name, authkey, room) c -> s
     0x03, 'login_confirm', 'x',  # () s -> c
 
-    0x20, 'space_object', 'Iddf?',  # (id, pos,, direction, you) s -> c
+    0x20, 'space_object', 'I2df?',  # (id, pos,, direction, you) s -> c
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
     0x22, 'space_object_render', render.FMT,
     0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
-    0x24, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
+    0x24, 'effect', 'BB3B2d2d',  # (shape, texture, color, from, to)
 
-    0x30, 'set_color', 'BBB',  # (r, g, b) c -> s
-    0x31, 'edit_ship', 'x',  # () c -> s
-    0x32, 'full_grid', '',  # (items, damage) s -> c
-    0x33, 'small_grid', 'x',  # not implemented
-    0x34, 'cargo_clear', 'x',  # () s <-> c (also, req)
-    0x35, 'cargo_item', 'HB',  # (item, damage) s -> c
-    0x36, 'do_edit', 'bbHB',  # (pos,, replacewith)
-    0x37, 'engineering_clear', 'x',  # () s <-> c (also, req)
-    0x38, 'engineering_option', 'H',  # (item,) s -> c
-    0x39, 'engineer_item', 'H',  # (item,) c -> s
+    0x30, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
+    0x31, 'set_color', '3B',  # (r, g, b) c -> s
+    0x32, 'edit_ship', 'x',  # () c -> s
+    0x33, 'full_grid', '',  # (items, damage) s -> c
+    0x34, 'small_grid', 'x',  # not implemented
+    0x35, 'cargo_clear', 'x',  # () s <-> c (also, req)
+    0x36, 'cargo_item', 'HB',  # (item, damage) s -> c
+    0x37, 'do_edit', '2bHB',  # (pos,, replacewith)
+    0x38, 'engineering_clear', 'x',  # () s <-> c (also, req)
+    0x39, 'engineering_option', 'H',  # (item,) s -> c
+    0x3a, 'engineer_item', 'H',  # (item,) c -> s
 
     0x40, 'thrust', 'bb',  # (direction,,) c -> s
-    0x41, 'set_dest', 'dd',  # (dest,,) c -> s
-    0x42, 'action', 'Bff',  # (action, x, y) c -> s
+    0x41, 'set_dest', '2d',  # (dest,,) c -> s
+    0x42, 'action', 'BffI',  # (action, x, y, obj) c -> s
     0x43, 'affect', 'BI',  # (affect, target) c -> s
 
     0xff, 'disconnect', '32p',  # (reason, ) c <-> s

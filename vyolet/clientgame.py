@@ -17,17 +17,18 @@ This file is part of Vyolet.
 
 import socket
 import pygame
-from collections import defaultdict
 
+from sprite import SpriteFactory, CursorSprite
+from sprite.spacesprite import SpaceSprite
+from sprite.effectsprite import EffectSprite
 from text import text
+from utils import colors
 import display
+import drawing
 import mainmenu
 import network
 import page
 import utils
-import drawing
-from utils import colors
-from model import render
 
 
 class LoadingPage(page.Page):
@@ -59,110 +60,11 @@ class LoadingPage(page.Page):
             display.set_page(GamePage(self.nr))
 
 
-class SpaceSprite(pygame.sprite.DirtySprite):
-    group = pygame.sprite.RenderPlain()
-    def __init__(self, gp, id_):
-        super(SpaceSprite, self).__init__(self.group)
-        self.gp = gp
-        self.id_ = id_
-        self.x = 0
-        self.y = 0
-        self.size = [0, 0]
-        self.original = pygame.Surface((0, 0)).convert_alpha()
-        self.box = [0, 0, 0, 0]
-        self._rotate()
-        gp.nr.sendp.space_object_req_render(id_)
-
-    @property
-    def rect(self):
-        size = self.image.get_rect().size
-        x = 100 * self.x - self.gp.origin_x - size[0] / 2
-        y = 100 * self.y - self.gp.origin_y - size[1] / 2
-        rect = pygame.Rect((x, y), size)
-        return rect
-
-    _direction = 0
-    @property
-    def direction(self):
-        return self._direction
-
-    @direction.setter
-    def direction(self, value):
-        self._direction = -value
-        self._rotate()
-
-    def _rotate(self):
-        image = self.original.copy()
-        if self.direction:
-            image = pygame.transform.rotate(image, self.direction)
-        self.image = image
-
-    def _resize_points(self, *points):
-        box = self.box[:]
-        for x, y in points:
-            if x < -box[0] or x > box[0]:
-                box[0] = abs(x)
-            if y < -box[1] or y > box[1]:
-                box[1] = abs(y)
-        if box != self.box:
-            width = box[0] * 2
-            height = box[1] * 2
-            image = pygame.Surface((width, height)).convert_alpha()
-            image.fill((0, 0, 0, 0))
-            dx = box[0] - self.box[0]
-            dy = box[1] - self.box[1]
-            image.blit(self.original, (dx, dy))
-            self.box = box
-            self.original = image
-
-    def render(self, r, g, b, a, cmd, *args):
-        color = (r, g, b, a)
-        if cmd == render.CLEAR:
-            self.original = pygame.Surface((0, 0)).convert_alpha()
-            self.box = [0, 0, 0, 0]
-        elif cmd == render.CIRCLE:
-            x, y, r, s = args[:4]
-            self._resize_points(
-                (x + r, y + r), (x - r, y - r))
-            dx, dy = self.box[:2]
-            pygame.draw.circle(self.original, color, (x + dx, y + dy), r, s)
-        elif cmd == render.RECT:
-            x, y, width, height = args[:4]
-            self._resize_points(
-                (x, y), (x + width, y + height))
-            dx, dy = self.box[:2]
-            rect = pygame.Rect(dx + x, dy + y, width, height)
-            print 'rect', rect
-            pygame.draw.rect(self.original, color, rect)
-        else:
-            print 'unk cmd', cmd
-        self._rotate()
-
-
-class SpriteFactory(defaultdict):
-    def __init__(self, gp):
-        super(SpriteFactory, self).__init__()
-        self.gp = gp
-
-    def __missing__(self, key):
-        self[key] = sprite = SpaceSprite(self.gp, key)
-        return sprite
-
-
-class CursorSprite(pygame.sprite.Sprite):
-    def __init__(self):
-        self.image = pygame.Surface((1, 1))
-
-    def __call__(self, x, y):
-        self.rect = pygame.Rect(x, y, 1, 1)
-        return self
-
-
 class GamePage(page.Page):
     def __init__(self, nr):
         self.nr = nr
         nr.recv_callback = self.recv_callback
-        self.objects = SpriteFactory(self)
+        self.objects = SpriteFactory(SpaceSprite, self)
         self.origin = (0, 0)
         self.cursor_sprite = CursorSprite()
         self.size = (0, 0)
@@ -213,6 +115,8 @@ class GamePage(page.Page):
             self.objects.pop(args[0])
         elif packet == 'space_object_render':
             self.objects[args[0]].render(*args[1:])
+        elif packet == 'effect':
+            
         elif packet == 'ship_stats':
             self.stats = args
         elif packet == 'full_grid':
