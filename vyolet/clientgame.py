@@ -26,7 +26,7 @@ import network
 import page
 import utils
 from modelviews import FullGridModel
-from sprite import SpriteFactory, CursorSprite
+from sprite import SpriteFactory
 from sprite.effectsprite import EffectSprite
 from sprite.spacesprite import SpaceSprite
 from text import text
@@ -69,7 +69,6 @@ class GamePage(page.Page):
         nr.recv_callback = self.recv_callback
         self.objects = SpriteFactory(SpaceSprite, self)
         self.origin = (0, 0)
-        self.cursor_sprite = CursorSprite()
         self.size = (0, 0)
         self.stats = (1, 1, 1, 1)
         self.equiped = (0,) * 10
@@ -118,7 +117,7 @@ class GamePage(page.Page):
                         or .4 * self.size[0] < abs(self.origin[0] - 100 * x)
                         or .4 * self.size[1] < abs(self.origin[1] - 100 * y)):
                 self.origin = (100 * x, 100 * y)
-                self.full_draw(self.screen, self.size)
+                self.draw(self.screen, self.size, True)
         elif packet == 'space_object_dead':
             self.objects.pop(args[0])
         elif packet == 'space_object_render':
@@ -138,24 +137,25 @@ class GamePage(page.Page):
     def input_click_down(self, (x, y), button):
         if self.model:
             pass
-        elif y > min(self.size[1] * 6 / 7, self.size[1] - 128):
-            self.hud_click_down((x, y), button)
+        elif y > self.hud_y(self.size):
+            self.hud_click_down((x, y - self.hud_y(self.size)), button)
         else:
-            targets = pygame.sprite.spritecollide(
-                self.cursor_sprite(x, y), SpaceSprite.group, False,
-                )  # pygame.sprite.collide_mask)
-            if targets:
-                print 'targets'
-                self.nr.sendp.affect(self.affect, targets[0].id_)
-            elif self.autopilot:
-                self.nr.sendp.set_dest((self.origin_x + x) / 100.,
-                                       (self.origin_y + y) / 100.)
+            for obj in SpaceSprite.group:
+                rect = obj.rect
+                if (rect.collidepoint(x, y)
+                        and obj.mask.get_at((x - rect.x, y - rect.y))):
+                    self.nr.sendp.affect(self.affect, obj.id_)
+                    break
             else:
-                offset = (self.size[0] / 2., self.size[1] / 2.)
-                factor = max(offset)
-                x = 0x7f * (x - offset[0]) / factor
-                y = 0x7f * (y - offset[1]) / factor
-                self.nr.sendp.thrust(x, y)
+                if self.autopilot:
+                    self.nr.sendp.set_dest((self.origin_x + x) / 100.,
+                                           (self.origin_y + y) / 100.)
+                else:
+                    offset = (self.size[0] / 2., self.size[1] / 2.)
+                    factor = max(offset)
+                    x = 0x7f * (x - offset[0]) / factor
+                    y = 0x7f * (y - offset[1]) / factor
+                    self.nr.sendp.thrust(x, y)
 
     def input_click_up(self, (x, y), button):
         if self.model:
@@ -165,8 +165,8 @@ class GamePage(page.Page):
                     (x + rect.x, y + rect.y), button)
             else:
                 self.model = None
-        elif y > self.size[1] * 6 / 7:
-            self.hud_click_up((x, y), button)
+        elif y > self.hud_y(self.size):
+            self.hud_click_up((x, y - self.hud_y(self.size)), button)
         if not self.autopilot:
             self.nr.sendp.thrust(0, 0)
 
@@ -191,26 +191,33 @@ class GamePage(page.Page):
     def input_key_up(self, key, mod):
         pass
 
-    def draw(self, screen, size):
-        if size != self.size or self.settings['scroll_bg']:
-            self.full_draw(screen, size)
+    def draw(self, screen, size, force_full=False):
+        split_screen = self.split_screen(screen, size)
+        if self.model:
+            self.model_draw(screen, size)
+        elif force_full or size != self.size or self.settings['scroll_bg']:
+            self.full_draw(split_screen)
         else:
-            self.delta_draw(screen, size)
+            self.update_draw(split_screen)
+        pygame.display.flip()
         self.screen = screen
         self.size = size
 
-    def full_draw(self, screen, size):
-        self.draw_bg(screen, size)
-        self.delta_draw(screen, size)
+    def full_draw(self, split_screen):
+        self.draw_bg(*split_screen[0])
+        self.draw_sprites(*split_screen[0])
+        self.hud_draw(*split_screen[1])
+        self.hud_update(*split_screen[1])
 
-    def delta_draw(self, screen, size):
+    def update_draw(self, split_screen):
+        self.draw_sprites(*split_screen[0])
+        self.hud_update(*split_screen[1])
+
+    def draw_sprites(self, screen, size):
         SpaceSprite.group.clear(screen, self.saved_bg)
         EffectSprite.group.clear(screen, self.saved_bg)
         SpaceSprite.group.draw(screen)
         EffectSprite.group.draw(screen)
-        self.hud_draw(screen, size)
-        self.model_draw(screen, size)
-        pygame.display.flip()
 
     def tick(self):
         EffectSprite.group.update()
@@ -220,26 +227,42 @@ class GamePage(page.Page):
     # HUD
     #######################################
 
+    def hud_y(self, size):
+        return size[1] - min(size[1] / 7, 128)
+
+    def split_screen(self, screen, size):
+        hud_y = self.hud_y(size)
+        vp_size = (size[0], hud_y)
+        viewport = screen.subsurface(pygame.Rect((0, 0), vp_size))
+        hud_size = (size[0], size[1] - hud_y)
+        hud_screen = screen.subsurface(pygame.Rect((0, hud_y), hud_size))
+        return ((viewport, vp_size), (hud_screen, hud_size))
+
     def hud_draw(self, screen, size):
-        image = self.hud_src.copy()
+        width = int(size[1] * 808 / 128)
+        image = pygame.transform.smoothscale(self.hud_src, (width, size[1]))
+        self.hud_scaled = image
+        self.hud_x = size[0] / 2 - width / 2
+        self.hud_e_bar_t = int(79 * size[1] / 128. + 0.5)
+        self.hud_f_bar_t = int(102 * size[1] / 128. + 0.5)
+        self.hud_bar_r = int(661 * width / 808. + 0.5)
+        self.hud_bar_w = int(514 * width / 808. + 0.5)
+        self.hud_bar_h = int(17 * size[1] / 128. + 0.5)
+        screen.fill(colors.GRAY)
+
+    def hud_update(self, screen, size):
+        image = self.hud_scaled.copy()
         missing = 1 - float(self.stats[0]) / (self.stats[1] or 1)
-        width = 514 * missing
-        x = 661 - width
-        rect = pygame.Rect(x, 79, width, 17)
+        width = self.hud_bar_w * missing
+        x = self.hud_bar_r - width
+        rect = pygame.Rect(x, self.hud_e_bar_t, width, self.hud_bar_h)
         pygame.draw.rect(image, colors.BLACK, rect)
         missing = 1 - float(self.stats[2]) / (self.stats[3] or 1)
-        width = 514 * missing
-        x = 661 - width
-        rect = pygame.Rect(x, 102, width, 17)
+        width = self.hud_bar_w * missing
+        x = self.hud_bar_r - width
+        rect = pygame.Rect(x, self.hud_f_bar_t, width, self.hud_bar_h)
         pygame.draw.rect(image, colors.BLACK, rect)
-        height = min(size[1] / 7, 128)
-        width = int(height / 128. * 808)
-        image = pygame.transform.smoothscale(image, (width, height))
-        x = size[0] / 2 - width / 2
-        y = size[1] - height
-        rect = pygame.Rect(0, y, size[0], height)
-        pygame.draw.rect(screen, colors.GRAY, rect)
-        screen.blit(image, (x, y))
+        screen.blit(image, (self.hud_x, 0))
 
     def hud_click_down(self, (x, y), button):
         pass

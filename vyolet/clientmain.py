@@ -29,7 +29,7 @@ def get_settings():
     return {
         'fullscreen': False,
         'framerate': 30,
-        'scroll_bg': False,
+        'scroll_bg': True,
         'lang': 'en_us',
         'keys': [pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5,
                  pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9, pygame.K_0,
