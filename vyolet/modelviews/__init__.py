@@ -15,11 +15,21 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-NoneResource = 0
-Iron = 1
-Coal = 2
-Oil = 3
-Copper = 4
-Silicon = 5
+# TODO: move this when it gets big
 
-Steel = 256
+class FullGridModel(object):
+    def __init__(self, items):
+        self.items = items
+
+    def draw(self, gp, screen, size):
+        self.screen = screen
+        self.size = size
+        item_size = min(size[0] / 17, size[1] / 13)
+        items = iter(self.items)
+        for x in xrange(17):
+            for y in xrange(13):
+                self.gp.draw_icon(
+                    screen, self.gp.parts_src, (x * 48, y * 48), next(items))
+
+    def input_click_down(self, (x, y), button):
+        pass

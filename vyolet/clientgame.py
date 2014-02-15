@@ -18,17 +18,18 @@ This file is part of Vyolet.
 import socket
 import pygame
 
-from sprite import SpriteFactory, CursorSprite
-from sprite.spacesprite import SpaceSprite
-from sprite.effectsprite import EffectSprite
-from text import text
-from utils import colors
 import display
 import drawing
 import mainmenu
 import network
 import page
 import utils
+from modelviews import FullGridModel
+from sprite import SpriteFactory, CursorSprite
+from sprite.effectsprite import EffectSprite
+from sprite.spacesprite import SpaceSprite
+from text import text
+from utils import colors
 
 
 class LoadingPage(page.Page):
@@ -78,6 +79,7 @@ class GamePage(page.Page):
         self.hud_src = self.load_image('hud.png')
         self.parts_src = self.load_image('parts.png')
         self.equip_src = self.load_image('equipment.png')
+        self.effects_src = self.load_image('effects.png')
 
     def load_image(self, filename):
         return pygame.image.load(utils.ensure_res(filename)).convert()
@@ -116,7 +118,12 @@ class GamePage(page.Page):
         elif packet == 'space_object_render':
             self.objects[args[0]].render(*args[1:])
         elif packet == 'effect':
-            
+            id_, cr, cg, cb, from_, tox, toy, to_obj, duration = args
+            from_ = self.objects[from_]
+            to_obj = self.objects[to_obj]
+            duration = int(duration * self.settings['framerate'])
+            EffectSprite(
+                self, id_, cr, cg, cb, from_, tox, toy, to_obj, duration)
         elif packet == 'ship_stats':
             self.stats = args
         elif packet == 'full_grid':
@@ -192,11 +199,13 @@ class GamePage(page.Page):
     def delta_draw(self, screen, size):
         self.draw_bg(screen, size)
         SpaceSprite.group.draw(screen)
+        EffectSprite.group.draw(screen)
         self.hud_draw(screen, size)
         self.model_draw(screen, size)
         pygame.display.flip()
 
     def tick(self):
+        EffectSprite.group.update()
         self.draw(self.screen, self.size)
 
     #######################################
@@ -272,21 +281,3 @@ class GamePage(page.Page):
                 (0xff - aux, aux, 0),
                 (0, size[1] - 2), (size[0] * aux / 255., size[1] - 2),
                 2)
-
-
-class FullGridModel(object):
-    def __init__(self, items):
-        self.items = items
-
-    def draw(self, gp, screen, size):
-        self.screen = screen
-        self.size = size
-        item_size = min(size[0] / 17, size[1] / 13)
-        items = iter(self.items)
-        for x in xrange(17):
-            for y in xrange(13):
-                self.gp.draw_icon(
-                    screen, self.gp.parts_src, (x * 48, y * 48), next(items))
-
-    def input_click_down(self, (x, y), button):
-        pass

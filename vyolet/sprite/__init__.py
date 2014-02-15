@@ -38,3 +38,35 @@ class CursorSprite(pygame.sprite.Sprite):
     def __call__(self, x, y):
         self.rect = pygame.Rect(x, y, 1, 1)
         return self
+
+
+class RelativeSprite(pygame.sprite.Sprite):
+    def __init__(self, origin_source, group):
+        super(RelativeSprite, self).__init__(group)
+        self.origin_source = origin_source
+
+    @property
+    def rect(self):
+        size = self.image.get_rect().size
+        x = 100 * self.x - self.origin_source.origin_x - size[0] / 2
+        y = 100 * self.y - self.origin_source.origin_y - size[1] / 2
+        rect = pygame.Rect((x, y), size)
+        return rect
+
+    _direction = 0
+    @property
+    def direction(self):
+        return self._direction
+
+    @direction.setter
+    def direction(self, value):
+        # negative because top left is origin
+        if self._direction != -value:
+            self._direction = -value
+            self.rotate()
+
+    def rotate(self):
+        image = self.original.copy()
+        if self.direction:
+            image = pygame.transform.rotate(image, self.direction)
+        self.image = image

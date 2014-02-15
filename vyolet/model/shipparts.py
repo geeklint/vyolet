@@ -49,6 +49,8 @@ class PartsContainer(object):
         x, y = self._shift((x, y))
         old = self.data[x][y]
         self.data[x][y] = value
+        if None in (old, value):
+            self.ship.invalidate = True
         if old is not None:
             old.on_rm(self.ship)
         if value is not None:

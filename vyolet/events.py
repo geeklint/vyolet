@@ -17,8 +17,8 @@ This file is part of Vyolet.
 
 (
     QUIT,
-    RUN,
     CMD,
     LOGIN,
     LOGOUT,
+    UCMD,
 ) = xrange(5)

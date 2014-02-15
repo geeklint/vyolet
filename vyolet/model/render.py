@@ -22,10 +22,10 @@ FMT = 'IB4B8l'  # (id, color,,, cmd, args,,,,,,,,,)
 # commands:
 (CLEAR, LINE, RECT, CIRCLE) = xrange(4)
 
-def send(nr, obj):
+def send(view, obj):
     print repr(obj)
     for render in obj.render():
-        nr.sendp.space_object_render(obj.id_, *render)
+        view.space_object_render(obj.id_, *render)
 
 
 def renderfunc(func):

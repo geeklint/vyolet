@@ -90,6 +90,8 @@ class SpaceObject(object):
         self.vel = kwargs.pop('vel', Vector.origin)
         # .acl: our acceleration
         self.acl = Vector.origin
+        # .effects: effects we are 'playing'
+        self.effects = []
         # .others: all other space objects
         self.others = others = kwargs.pop('others')
         for i, other in enumerate(others):
@@ -158,15 +160,16 @@ class SpaceObject(object):
         self.others[self.id_] = None
 
     def tick(self, count):
-        self.pos += self.vel
-        self.vel += self.acl
+        self.effects = []
+        if self.added:
+            self.pos += self.vel
+            self.vel += self.acl
         self.acl = Vector.origin
 
 
 #######################################
 # Mixin bases
 #######################################
-
 
 
 class Damageable(SpaceObject):
@@ -276,8 +279,6 @@ class Satallite(SpaceObject):
 
 
 class Ship(Damageable):
-    top_speed = 1
-    color = colors.VYOLET
     def __init__(self, **kwargs):
         super(Ship, self).__init__(**kwargs)
         self.stats = defaultdict(lambda: 0.0)
@@ -289,6 +290,17 @@ class Ship(Damageable):
 
     def affect_damage(self, direction, amount, dmg_type, cause):
         pass  # TODO
+
+    _color = colors.VYOLET
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, value):
+        self._color = value
+        self.invalidate = True
+
 
     _thrust = Vector.origin
     @property
@@ -318,6 +330,13 @@ class Ship(Damageable):
         display = super(Ship, self).render()
         display.extend(self.parts.render(self.color))
         return display
+
+    def view_stats(self):
+        return (
+            self.stats['energy'],
+            self.stats['max_energy'],
+            self.stats['fuel'],
+            self.stats['max_fuel'])
 
     def tick(self, count):
         super(Ship, self).tick(count)
@@ -363,10 +382,10 @@ class Ship(Damageable):
                     pass
 
 
-
 #######################################
 # Primary classes
 #######################################
+
 
 class Sun(DamageSphere, Static, Gravity):
     def get_atmospheres(self, key):
@@ -397,14 +416,7 @@ class UserShip(Ship):
 
     @property
     def starting_location(self):
-        return Vector.rect(5, random.randrange(360) * math.pi / 180)
+        return Vector.rect(6, random.randrange(360) * math.pi / 180)
 
-    def tick(self, count):
-        super(UserShip, self).tick(count)
-        self.conn.sendp.ship_stats(
-            self.stats['energy'],
-            self.stats['max_energy'],
-            self.stats['fuel'],
-            self.stats['max_fuel'])
 
 

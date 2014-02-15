@@ -25,9 +25,13 @@ from utils import DataFile
 from model.game import Game
 
 def gameloop(queue):
+    block_until = time.time() + .05
     with DataFile('game.dat', Game, pickle, load=False) as game:
         while True:
-            time.sleep(.05)
+            now = time.time()
+            if now < block_until:
+                time.sleep(block_until - now)
+            block_until += .05
             game.tick()
             while True:
                 try:
@@ -37,16 +41,17 @@ def gameloop(queue):
                 if event == events.QUIT:
                     game.despawn_all()
                     return
-                elif event == events.RUN:
-                    args[0](game)
                 elif event == events.CMD:
                     if args[0] == 'stop':
                         queue.put((events.QUIT, ()))
                 elif event == events.LOGIN:
-                    username, source = args
+                    username, view = args
                     console.printf('{} logged in', username)
-                    game.user_login(username, source)
+                    game.user_login(username, view)
                 elif event == events.LOGOUT:
                     username, = args
                     console.printf('{} logged out', username)
                     game.user_logout(username)
+                elif event == events.UCMD:
+                    username, cmd, args = args
+                    getattr(game.command(username), cmd)(*args)

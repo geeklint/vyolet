@@ -39,7 +39,7 @@ PACKETS = [
     0x21, 'space_object_dead', 'I',  # (id, ) s -> c
     0x22, 'space_object_render', render.FMT,
     0x23, 'space_object_req_render', 'I',  # (id, ) s -> c
-    0x24, 'effect', 'BB3B2d2d',  # (shape, texture, color, from, to)
+    0x24, 'effect', 'B3BI2dIf',  # (id_, color,,, from, to,, to, time) s -> c
 
     0x30, 'ship_stats', 'IIII',  # (e, max_e, f, max_f) s -> c
     0x31, 'set_color', '3B',  # (r, g, b) c -> s

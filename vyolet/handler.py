@@ -45,7 +45,7 @@ def handle_client(version, queue, nr, packet, args):
                 return
             nr.username = username
             nr.stage = 2
-            queue.put((events.LOGIN, (username, nr)))
+            queue.put((events.LOGIN, (username, nr.sendp)))
             nr.sendp.login_confirm()
         else:
             return
@@ -53,27 +53,8 @@ def handle_client(version, queue, nr, packet, args):
     else:
         if packet == 'disconnect':
             queue.put((events.LOGOUT, (nr.username,)))
-        elif packet == 'space_object_req_render':
-            queue.put((events.RUN, (partial(send_render, nr, args[0]),)))
-        elif packet == 'set_color':
-            color = args
-            if sum(color) < 0x80:
-                factor = int(0x80 / sum(color))
-                r, g, b = color
-                color = (r * factor, g * factor, b * factor)
-            nr.ship.color = color
-            nr.ship.invalidate = True
-        elif packet == 'edit_ship':
-            nr.sendp.full_grid()
-        elif packet == 'thrust':
-            nr.ship.thrust = Vector(*args) / 128
-        elif packet == 'set_dest':
-            nr.ship.dest = Vector(*args)
-        elif packet == 'action':
-            if args[0] < 10:
-                nr.ship.equipment[args[0]].act(nr.ship)
-        elif packet == 'affect':
-            pass
+        else:
+            queue.put((events.UCMD, (nr.username, packet, args)))
 
 
 

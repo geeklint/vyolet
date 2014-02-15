@@ -17,8 +17,10 @@ This file is part of Vyolet.
 
 import random
 from collections import defaultdict
+from functools import partial
 
 from . import render, spaceobjects, world_gen
+from ..utils import Vector
 
 
 class SpaceTile(object):
@@ -37,23 +39,20 @@ class Game(object):
         self.generator.init(self)
         self.tick_count = 0
 
-    def user_login(self, username, source):
+    def user_login(self, username, view):
         if username in self.offline:
             ship = self.offline.pop(username)
             ship.add_to_space()
         else:
             ship = spaceobjects.UserShip(
                 name=username, **self.spaceobject_params)
-        self.online[username] = (ship, source)
-        ship.conn = source
-        source.ship = ship
+        self.online[username] = (ship, view)
         return ship
 
     def user_logout(self, username):
-        ship, _source = self.online.pop(username)
+        ship, _view = self.online.pop(username)
         ship.rm_from_space()
         self.offline[username] = ship
-        ship.conn = None
 
     @property
     def spaceobject_params(self):
@@ -63,17 +62,17 @@ class Game(object):
             'space': self.space}
 
     def kick_user(self, username, message):
-        ship, source = self.online.pop(username)
+        ship, view = self.online.pop(username)
         ship.rm_from_space()
         self.offline[username] = ship
-        source.sendp.disconnect(message)
+        view.disconnect(message)
 
     def kick_all(self, message):
         while self.online:
-            username, (ship, source) = self.online.popitem()
+            username, (ship, view) = self.online.popitem()
             ship.rm_from_space()
             self.offline[username] = ship
-            source.sendp.disconnect(message)
+            view.disconnect(message)
 
     def tick(self):
         self.tick_count = count = (self.tick_count + 1) % 24
@@ -81,12 +80,54 @@ class Game(object):
             if not obj.added:
                 continue
             obj.tick(count)
+            if isinstance(obj, spaceobjects.UserShip):
+                view = self.online[obj.name][1]
+                view.ship_stats(*obj.view_stats())
+            invalidate = obj.invalidate
             for other, _dist in obj.get_nearby():
                 if isinstance(other, spaceobjects.UserShip):
-                    _ship, source = self.online[other.name]
-                    if obj.invalidate:
-                        render.send(source, obj)
-                    source.sendp.space_object(
+                    view = self.online[other.name][1]
+                    if invalidate:
+                        render.send(view, obj)
+                    view.space_object(
                         obj.id_,
                         obj.pos[0], obj.pos[1], obj.direction,
                         other is obj)
+
+    def command(self, user):
+        return self._UserCommand(self, user)
+
+    class _UserCommand(object):
+        def __init__(self, game, user):
+            self.game = game
+            self.user = user
+
+        def __getattr__(self, attr):
+            return partial(self.game._user_command, self.user, attr)
+
+    def _user_command(self, user, command, *args):
+        ship, view = self.online[user]
+        if command == 'space_object_req_render':
+            render.send(view, self.objects[args[0]])
+        elif command == 'set_color':
+            color = args
+            total = sum(color)
+            if total < 0x80:
+                if total:
+                    factor = float(0x80) / sum(color)
+                    r, g, b = color
+                    color = (int(r * factor), int(g * factor), int(b * factor))
+                else:
+                    color = (0x2b, 0x2b, 0x2b)
+            ship.color = color
+        elif command == 'edit_ship':
+            view.full_grid()
+        elif command == 'thrust':
+            ship.thrust = Vector(*args) / 128
+        elif command == 'set_dest':
+            ship.dest = Vector(*args)
+        elif command == 'action':
+            if args[0] < 10:
+                ship.equipment[args[0]].act(ship)
+        elif command == 'affect':
+            pass
