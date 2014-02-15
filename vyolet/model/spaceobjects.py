@@ -20,8 +20,9 @@ import math
 import random
 from collections import namedtuple, defaultdict
 
-import shipparts
 from . import render
+from . import shipparts
+from ..enum import effect
 from ..utils import colors, Nil, Vector
 
 '''
@@ -137,7 +138,7 @@ class SpaceObject(object):
         for tile in self.tiles:
             for space_object in tile.local:
                 obj_dist = self.pos.distance(space_object.pos)
-                if obj_dist <= distance:
+                if space_object.added and obj_dist <= distance:
                     yield space_object, obj_dist
 
     def render(self):
@@ -161,9 +162,8 @@ class SpaceObject(object):
 
     def tick(self, count):
         self.effects = []
-        if self.added:
-            self.pos += self.vel
-            self.vel += self.acl
+        self.pos += self.vel
+        self.vel += self.acl
         self.acl = Vector.origin
 
 
@@ -367,17 +367,28 @@ class Ship(Damageable):
                 amount = part.thrust(self, thrust) / self.stats['weight']
                 self.acl += self.thrust * amount
         if self.target:
-            affect, id_ = self.target
-            target_obj = self.others[id_]
+            affect, target_id = self.target
+            target_obj = self.others[target_id]
             if self.pos.distance(target_obj.pos) > self.stats['range']:
                 self.target = None
             else:
                 if affect == 0:  # attack
-                    direction = (self.pos - target_obj.pos).direction()
+                    direction = (self.pos - target_obj.pos).angle()
                     amounts = defaultdict(lambda: 0)
+                    if not count:
+                        amounts['laser'] += 10
                     for type_, amount in amounts.iteritems():
                         target_obj.affect.damage(
                             direction, amount, type_, self)
+                        self.effects.append((
+                            effect.DOT,
+                            self.color[0],
+                            self.color[1],
+                            self.color[2],
+                            self.id_,
+                            0, 0,
+                            target_id,
+                            .5))
                 elif affect == 1:  # mine
                     pass
 

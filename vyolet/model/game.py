@@ -93,6 +93,8 @@ class Game(object):
                         obj.id_,
                         obj.pos[0], obj.pos[1], obj.direction,
                         other is obj)
+                    for effect in obj.effects:
+                        view.effect(*effect)
 
     def command(self, user):
         return self._UserCommand(self, user)
@@ -118,7 +120,7 @@ class Game(object):
                     r, g, b = color
                     color = (int(r * factor), int(g * factor), int(b * factor))
                 else:
-                    color = (0x2b, 0x2b, 0x2b)
+                    color = (0x2a, 0x2a, 0x2a)
             ship.color = color
         elif command == 'edit_ship':
             view.full_grid()
@@ -130,4 +132,4 @@ class Game(object):
             if args[0] < 10:
                 ship.equipment[args[0]].act(ship)
         elif command == 'affect':
-            pass
+            ship.target = args

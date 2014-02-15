@@ -16,11 +16,9 @@
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+from ..enum import render
 
 FMT = 'IB4B8l'  # (id, color,,, cmd, args,,,,,,,,,)
-
-# commands:
-(CLEAR, LINE, RECT, CIRCLE) = xrange(4)
 
 def send(view, obj):
     print repr(obj)
@@ -36,7 +34,7 @@ def renderfunc(func):
 
 @renderfunc
 def clear():
-    return (CLEAR,)
+    return (render.CLEAR,)
 
 
 @renderfunc
@@ -46,7 +44,7 @@ def line(points):
     arr = []
     for point in points:
         arr.extend(point)
-    return (LINE,) + tuple(arr)
+    return (render.LINE,) + tuple(arr)
 
 
 def lines(points):
@@ -60,14 +58,14 @@ def lines(points):
 
 @renderfunc
 def rect((x, y), (width, height)):
-    return (RECT, x, y, width, height)
+    return (render.RECT, x, y, width, height)
 
 
 @renderfunc
 def circle(pos, radius, stroke):
-    return (CIRCLE, pos[0], pos[1], radius, stroke)
+    return (render.CIRCLE, pos[0], pos[1], radius, stroke)
 
 
 @renderfunc
 def disk(pos, radius):
-    return (CIRCLE, pos[0], pos[1], radius, 0)
+    return (render.CIRCLE, pos[0], pos[1], radius, 0)

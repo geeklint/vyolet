@@ -58,6 +58,7 @@ class EffectSprite(RelativeSprite):
             self.original.blit(mask, (0, 0))
             self.duration = duration
             self.update()
+            self.rotate()
 
     def update(self):
         self.duration -= 1
@@ -72,6 +73,7 @@ class EffectSprite(RelativeSprite):
                 self.y = me.y
             if self.rotated:
                 self.direction = (to - me).angle()
+                self.rotate()
 
 
 

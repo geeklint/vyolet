@@ -70,3 +70,4 @@ class RelativeSprite(pygame.sprite.Sprite):
         if self.direction:
             image = pygame.transform.rotate(image, self.direction)
         self.image = image
+        self.mask = pygame.mask.from_surface(image)

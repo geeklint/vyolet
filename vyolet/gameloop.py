@@ -31,7 +31,7 @@ def gameloop(queue):
             now = time.time()
             if now < block_until:
                 time.sleep(block_until - now)
-            block_until += .05
+            block_until = now + .05
             game.tick()
             while True:
                 try:

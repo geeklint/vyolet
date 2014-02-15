@@ -15,6 +15,7 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import random
 import socket
 import pygame
 
@@ -41,7 +42,8 @@ class LoadingPage(page.Page):
         else:
             self.nr = nr = network.NetworkReciever(conn, self.recv_callback)
             nr.sendp.handshake(network.HANDSHAKE)
-            nr.sendp.login(0, 0, 'name', 'pass', room)
+            username = 'Player-' + str(random.randrange(10))
+            nr.sendp.login(0, 0, username, 'password', room)
 
     def draw(self, screen, size):
         self.screen = screen
@@ -73,6 +75,7 @@ class GamePage(page.Page):
         self.equiped = (0,) * 10
         self.model = None
         self.autopilot = True
+        self.affect = 0
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
         self.bg_src = self.load_image('stars.png')
@@ -111,8 +114,11 @@ class GamePage(page.Page):
             self.objects[id_].x = x
             self.objects[id_].y = y
             self.objects[id_].direction = d
-            if origin:
+            if origin and (self.settings['scroll_bg']
+                        or .4 * self.size[0] < abs(self.origin[0] - 100 * x)
+                        or .4 * self.size[1] < abs(self.origin[1] - 100 * y)):
                 self.origin = (100 * x, 100 * y)
+                self.full_draw(self.screen, self.size)
         elif packet == 'space_object_dead':
             self.objects.pop(args[0])
         elif packet == 'space_object_render':
@@ -137,7 +143,7 @@ class GamePage(page.Page):
         else:
             targets = pygame.sprite.spritecollide(
                 self.cursor_sprite(x, y), SpaceSprite.group, False,
-                pygame.sprite.collide_mask)
+                )  # pygame.sprite.collide_mask)
             if targets:
                 print 'targets'
                 self.nr.sendp.affect(self.affect, targets[0].id_)
@@ -186,7 +192,7 @@ class GamePage(page.Page):
         pass
 
     def draw(self, screen, size):
-        if size != self.size:
+        if size != self.size or self.settings['scroll_bg']:
             self.full_draw(screen, size)
         else:
             self.delta_draw(screen, size)
@@ -194,10 +200,12 @@ class GamePage(page.Page):
         self.size = size
 
     def full_draw(self, screen, size):
+        self.draw_bg(screen, size)
         self.delta_draw(screen, size)
 
     def delta_draw(self, screen, size):
-        self.draw_bg(screen, size)
+        SpaceSprite.group.clear(screen, self.saved_bg)
+        EffectSprite.group.clear(screen, self.saved_bg)
         SpaceSprite.group.draw(screen)
         EffectSprite.group.draw(screen)
         self.hud_draw(screen, size)
@@ -260,15 +268,19 @@ class GamePage(page.Page):
     #######################################
 
     def draw_bg(self, screen, size):
+        surface = pygame.Surface(size)
         x = -self.origin[0] % 1600
         y = -self.origin[1] % 900
         cells = ((x - 1600, y - 900), (x, y - 900), (x + 1600, y - 900),
                  (x - 1600, y), (x, y), (x + 1600, y),
                  (x - 1600, y + 900), (x, y + 900), (x + 1600, y + 900))
         for pos in cells:
-            if -1600 < pos[0] < 1600 and -900 < pos[1] < 900:
+            if (-1600 < pos[0] < 1600 + size[0]
+                    and -900 < pos[1] < 900 + size[1]):
                 rect = pygame.Rect(pos, (1600, 900))
-                screen.blit(self.bg_src, rect)
+                surface.blit(self.bg_src, rect)
+        self.saved_bg = surface
+        screen.blit(surface, (0, 0))
 
     def draw_icon(self, screen, source, pos, id_, aux=0, size=(48, 48)):
         offset = (id_ * size[0] % source.get_rect().width,

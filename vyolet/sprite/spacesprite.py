@@ -18,7 +18,7 @@ This file is part of Vyolet.
 import pygame
 
 from . import RelativeSprite
-from ..model import render
+from ..enum import render
 
 class SpaceSprite(RelativeSprite):
     group = pygame.sprite.RenderPlain()
