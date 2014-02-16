@@ -121,7 +121,14 @@ class Game(object):
     def _user_command(self, user, command, *args):
         ship, view = self.online[user]
         if command == 'space_object_req_render':
-            render.send(view, self.objects[args[0]])
+            try:
+                obj = self.objects[args[0]]
+                if obj is None:
+                    [][0]
+            except IndexError:
+                view.space_object_dead(args[0])
+            else:
+                render.send(view, self.objects[args[0]])
         elif command == 'set_color':
             color = args
             total = sum(color)

@@ -122,8 +122,8 @@ class GamePage(page.Page):
             self.objects[id_].y = y
             self.objects[id_].direction = d
             if origin and (self.settings['scroll_bg']
-                        or .4 * self.size[0] < abs(self.origin[0] - 100 * x)
-                        or .4 * self.size[1] < abs(self.origin[1] - 100 * y)):
+                    or .4 * self.size[0] < abs(self.origin[0] - 100 * x)
+                    or .4 * self.size[1] < abs(self.origin[1] - 100 * y)):
                 self.origin = (100 * x, 100 * y)
                 self.redraw = True
         elif packet == 'space_object_dead':

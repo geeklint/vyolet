@@ -109,6 +109,11 @@ class SpaceObject(object):
         # .affect: a collection of functions which another object can use
         self.affect = NestedAttribute('affect', self)
 
+    def spawn(self, Class, **kwargs):
+        kwargs.setdefault('pos', self.pos)
+        kwargs.update({'space':self.space, 'others':self.others})
+        Class(**kwargs)
+
     @property
     def pivot(self):
         '''Get the coord of the tile of space which we are on'''
@@ -290,7 +295,7 @@ class Ship(Damageable):
         self.equipment = [lambda ship: None] * 10
         self.cargo = {
             'resources': [],
-            'parts': [],
+            'parts': [shipparts.Armor()],
             'equipment': [],
         }
 
@@ -318,6 +323,9 @@ class Ship(Damageable):
                 else:
                     self.parts.sub((x, y), wreckage)
         else:
+            for item_type in self.cargo:
+                for item in self.cargo[item_type]:
+                    self.spawn(FloatingItem, item_type=item_type, item=item)
             self.destroy()
 
     _color = colors.VYOLET
@@ -466,10 +474,32 @@ class Planet(DamageSphere, Satallite, Mineable):
 
 
 class UserShip(Ship):
-
     def __init__(self, **kwargs):
         self.name = kwargs.pop('name')
         kwargs['pos'] = Vector.rect(6, random.randrange(360) * math.pi / 180)
         super(UserShip, self).__init__(**kwargs)
 
 
+class FloatingItem(SpaceObject):
+    def __init__(self, **kwargs):
+        self.item_type = kwargs.pop('item_type')
+        self.item = kwargs.pop('item')
+        super(FloatingItem, self).__init__(**kwargs)
+
+    # don't directly inherit Damageable so we aren't targetable
+    def affect_damage(self, direction, amount, dmg_type, cause):
+        self.destroy()
+
+    def render(self):
+        display = super(FloatingItem, self).render()
+        display.extend([
+            render.circle(colors.WHITE, (0, 0), 5, 1),
+            render.rect(colors.WHITE, (-2, -2), (4, 4))])
+        return display
+
+    def tick(self, count):
+        super(FloatingItem, self).tick(count)
+        for obj, dist in self.get_nearby():
+            if dist < 1 and isinstance(obj, Ship):
+                obj.cargo[self.item_type].append(self.item)
+                self.destroy()
