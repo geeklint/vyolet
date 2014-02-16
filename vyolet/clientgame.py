@@ -15,7 +15,7 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import random
+import os
 import socket
 import pygame
 
@@ -34,16 +34,22 @@ from utils import colors
 
 
 class LoadingPage(page.Page):
-    def __init__(self, (room, addr, port)):
+    def __init__(self, addr):
+        self.addr = addr
+
+    def init(self, settings):
+        super(LoadingPage, self).init(settings)
+        room, addr, port = self.addr
         try:
             conn = socket.create_connection((addr, port), 5.0)
         except (socket.error, socket.timeout):
             display.set_page(mainmenu.MainMenu())
         else:
-            self.nr = nr = network.NetworkReciever(conn, self.recv_callback)
+            self.nr = nr = network.NetworkReciever(conn, self.recv_packet)
             nr.sendp.handshake(network.HANDSHAKE)
-            username = 'Player-' + str(random.randrange(10))
+            username = os.environ['VYOLET_PLAYER_NAME']
             nr.sendp.login(0, 0, username, 'password', room)
+
 
     def draw(self, screen, size):
         self.screen = screen
@@ -55,20 +61,22 @@ class LoadingPage(page.Page):
         drawing.blit_center(screen, label, self.origin)
         pygame.display.flip()
 
-    def recv_callback(self, packet, args):
+    def recv_packet(self, packet, args):
         if packet == 'disconnect':
             print 'dc', args
             display.set_page(mainmenu.MainMenu())
         elif packet == 'login_confirm':
-            display.set_page(GamePage(self.nr))
+            display.set_page(GamePage(self.nr, self.settings))
 
 
 class GamePage(page.Page):
-    def __init__(self, nr):
+    def __init__(self, nr, settings):
         self.nr = nr
-        nr.recv_callback = self.recv_callback
+        self.settings = settings
+        nr.recv_callback = self.recv_packet
         self.objects = SpriteFactory(SpaceSprite, self)
         self.origin = (0, 0)
+        self.redraw = True
         self.size = (0, 0)
         self.stats = (1, 1, 1, 1)
         self.equiped = (0,) * 10
@@ -104,7 +112,7 @@ class GamePage(page.Page):
     # Main functions
     #######################################
 
-    def recv_callback(self, packet, args):
+    def recv_packet(self, packet, args):
         if packet == 'disconnect':
             print 'dc', args
             display.set_page(mainmenu.MainMenu())
@@ -117,9 +125,9 @@ class GamePage(page.Page):
                         or .4 * self.size[0] < abs(self.origin[0] - 100 * x)
                         or .4 * self.size[1] < abs(self.origin[1] - 100 * y)):
                 self.origin = (100 * x, 100 * y)
-                self.draw(self.screen, self.size, True)
+                self.redraw = True
         elif packet == 'space_object_dead':
-            self.objects.pop(args[0])
+            self.objects.pop(args[0]).kill()
         elif packet == 'space_object_render':
             self.objects[args[0]].render(*args[1:])
         elif packet == 'effect':
@@ -191,11 +199,12 @@ class GamePage(page.Page):
     def input_key_up(self, key, mod):
         pass
 
-    def draw(self, screen, size, force_full=False):
+    def draw(self, screen, size):
         split_screen = self.split_screen(screen, size)
         if self.model:
             self.model_draw(screen, size)
-        elif force_full or size != self.size or self.settings['scroll_bg']:
+        elif self.redraw or size != self.size or self.settings['scroll_bg']:
+            self.redraw = False
             self.full_draw(split_screen)
         else:
             self.update_draw(split_screen)

@@ -27,7 +27,7 @@ class PartsContainer(object):
         self.origin = (width // 2, height // 2)
 
     def _shift(self, (x, y)):
-        return (self.origin[0] - x, self.origin[1] - y)
+        return (self.origin[0] + x, self.origin[1] + y)
 
     def _in_bounds(self, (x, y)):
         return all((x >= 0, y >= 0, x < self.size[0], y < self.size[1]))
@@ -128,11 +128,27 @@ class ShipPart(object):
     def on_rm(self, ship):
         pass
 
+    def damage(self, direction, amount, dmg_type, cause):
+        self.health -= amount
+        if self.health <= 0:
+            return -self.health
+        return None
+
     def thrust(self, ship, amount):
         return 0
 
     def tick(self, ship):
         pass
+
+
+class ResistanceMixin(ShipPart):
+    resistance = dict()
+
+    def damage(self, direction, amount, dmg_type, cause):
+        mod = 100 / (100. + self.resistance.get(dmg_type, 0))
+        remain = super(ResistanceMixin, self).damage(
+            direction, amount * mod, dmg_type, cause)
+        return int(remain / mod)
 
 
 class StatsMixin(ShipPart):
@@ -174,8 +190,15 @@ class NonePart(ShipPart):
     id_ = 0
 
 
-class Cockpit(StatsMixin, RegenMixin):
+class Wreckage(ShipPart):
     id_ = 1
+
+    def damage(self, direction, amount, dmg_type, cause):
+        return amount
+
+
+class Cockpit(StatsMixin, RegenMixin):
+    id_ = 2
 
     stats = {
         'weight': 200,
@@ -198,7 +221,7 @@ class Cockpit(StatsMixin, RegenMixin):
 
 
 class Capacitor(StatsMixin):
-    id_ = 2
+    id_ = 3
 
     stats = {
         'weight': 100,
@@ -207,7 +230,7 @@ class Capacitor(StatsMixin):
 
 
 class FuelTank(StatsMixin):
-    id_ = 3
+    id_ = 4
 
     stats = {
         'max_fuel': 100,
@@ -215,7 +238,7 @@ class FuelTank(StatsMixin):
 
 
 class RocketEngine(StatsMixin):
-    id_ = 4
+    id_ = 5
 
     stats = {
         'weight': 100,
@@ -230,7 +253,7 @@ class RocketEngine(StatsMixin):
 
 
 class Armor(StatsMixin):
-    id_ = 5
+    id_ = 6
 
     health = 500
 

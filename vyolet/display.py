@@ -27,15 +27,9 @@ SIZES = [(640, 360), (854, 480), (1024, 576), (1280, 720), (1600, 900),
          (1920, 1080), (2048, 1152), (2560, 1440), (2880, 1620), (3840, 2160)]
 
 SET_PAGE = pygame.USEREVENT + 0
-RECV_PACKET = pygame.USEREVENT + 2
 
 def set_page(page):
     pygame.event.post(pygame.event.Event(SET_PAGE, {'page': page}))
-
-
-def recv_packet(packet, args):
-    pygame.event.post(
-        pygame.event.Event(RECV_PACKET, {'packet': packet, 'args': args}))
 
 
 def winloop(settings, screen, page):
@@ -68,8 +62,6 @@ def winloop(settings, screen, page):
                 page = event.page
                 page.init(settings)
                 page.draw(screen, screen.get_size())
-            elif event.type == RECV_PACKET:
-                page.recv_packet(event.packet, event.args)
 
 
 def loop(settings, version, page):

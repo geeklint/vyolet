@@ -22,7 +22,7 @@ from collections import namedtuple, defaultdict
 
 from . import render
 from . import shipparts
-from ..enum import effect
+from .. import enum
 from ..utils import colors, Nil, Vector
 
 '''
@@ -70,6 +70,9 @@ class SpaceObject(object):
 
     # .added: if we exist
     added = False
+
+    # .dead: destroy us from world
+    dead = False
 
     # .direction: our direction
     direction = 0
@@ -158,7 +161,7 @@ class SpaceObject(object):
     def destroy(self):
         '''Remove this object from space'''
         self.rm_from_space()
-        self.others[self.id_] = None
+        self.dead = True
 
     def tick(self, count):
         self.effects = []
@@ -176,13 +179,8 @@ class Damageable(SpaceObject):
     '''Class which represents an object which can be damaged
     '''
 
-    @staticmethod
-    def reduce(amount, resist):
-        return int(100 * amount / (100. + resist))
-
     def affect_damage(self, direction, amount, dmg_type, cause):
         pass
-
 
 
 class Mineable(SpaceObject):
@@ -233,7 +231,10 @@ class DamageSphere(SpaceObject):
                 for atmos in self.atmospheres:
                     if dist < (atmos.size / 100.):
                         sp_obj.affect.damage(
-                            None, atmos.damage, atmos.dmg_type, self)
+                            (self.pos - sp_obj.pos).angle(),
+                            atmos.damage,
+                            atmos.dmg_type,
+                            self)
                         break
 
 
@@ -287,9 +288,37 @@ class Ship(Damageable):
         self.autopilot = False
         self.target = None
         self.equipment = [lambda ship: None] * 10
+        self.cargo = {
+            'resources': [],
+            'parts': [],
+            'equipment': [],
+        }
 
     def affect_damage(self, direction, amount, dmg_type, cause):
-        pass  # TODO
+        slope = math.tan(math.radians(self.direction - direction))
+        dx = 1 if abs(direction) > 90 else -1
+        dy = -int(math.copysign(1, direction))
+        wreckage = shipparts.Wreckage()
+        cells = set()
+        for x in xrange(0, dx * 9, dx):
+            y = int(slope * x + 0.5)
+            if abs(y) < 7:
+                cells.add((x, y))
+        for y in xrange(0, dy * 7, dy):
+            x = int((y - 0.5) / slope)
+            if abs(x) < 9:
+                cells.add((x, y))
+        for x, y in sorted(
+                cells, key=lambda (x, y): (dx * x, dy * y), reverse=True):
+            if self.parts[x, y] is not None:
+                amount = self.parts[x, y].damage(
+                    direction, amount, dmg_type, cause)
+                if amount is None:
+                    break
+                else:
+                    self.parts.sub((x, y), wreckage)
+        else:
+            self.destroy()
 
     _color = colors.VYOLET
     @property
@@ -320,11 +349,14 @@ class Ship(Damageable):
     @dest.setter
     def dest(self, value):
         self._dest = value
-        self.autopilot = True
-        self.ap_last_d = self.pos.distance(value)
-        self.ap_halfway = .5 * self.ap_last_d
-        self.ap_t = 0
-        self.ap_working_thrust = None
+        if abs(self.vel) > .01:
+            self.autopilot = 2
+        else:
+            self.autopilot = 1
+            self.ap_last_d = self.pos.distance(value)
+            self.ap_halfway = .5 * self.ap_last_d
+            self.ap_t = 0
+            self.ap_working_thrust = None
 
     def render(self):
         display = super(Ship, self).render()
@@ -338,20 +370,29 @@ class Ship(Damageable):
             self.stats['fuel'],
             self.stats['max_fuel'])
 
+    def get_thrust(self, amount):
+        thrust = 0
+        for part in self.parts:
+            thrust += part.thrust(self, amount) / self.stats['weight']
+        return thrust
+
     def tick(self, count):
         super(Ship, self).tick(count)
         for part in self.parts:
             part.tick(self)
-        if self.autopilot:
+        if self.autopilot == 2:
+            if abs(self.vel) < .01:
+                self.dest = self.dest  # redo autopilot
+            else:
+                self.acl -= self.get_thrust(1) * self.vel.unit()
+        elif self.autopilot == 1:
             towards = self.dest - self.pos
             if abs(towards) < .01 and abs(self.vel) < .01:
                 self.pos = self.dest
                 self.vel = Vector.origin
                 self.autopilot = False
             else:
-                thrust = 0
-                for part in self.parts:
-                    thrust += part.thrust(self, 1) / self.stats['weight']
+                thrust = self.get_thrust(1)
                 if abs(towards) <= self.ap_halfway:
                     if self.ap_last_d < abs(towards):
                         self.dest = self.dest  # redo autopilot
@@ -369,10 +410,16 @@ class Ship(Damageable):
         if self.target:
             affect, target_id = self.target
             target_obj = self.others[target_id]
-            if self.pos.distance(target_obj.pos) > self.stats['range']:
+            req_cls = {enum.affect.ATTACK: Damageable,
+                       enum.affect.MINE: Mineable}[affect]
+            if (target_obj is None
+                    or self.pos.distance(target_obj.pos) > self.stats['range']
+                    or target_id == self.id_
+                    or not isinstance(target_obj, req_cls)
+                    or target_obj.dead):
                 self.target = None
             else:
-                if affect == 0:  # attack
+                if affect == enum.affect.ATTACK:
                     direction = (self.pos - target_obj.pos).angle()
                     amounts = defaultdict(lambda: 0)
                     if not count:
@@ -381,7 +428,7 @@ class Ship(Damageable):
                         target_obj.affect.damage(
                             direction, amount, type_, self)
                         self.effects.append((
-                            effect.DOT,
+                            enum.effect.DOT,
                             self.color[0],
                             self.color[1],
                             self.color[2],
@@ -389,7 +436,7 @@ class Ship(Damageable):
                             0, 0,
                             target_id,
                             .5))
-                elif affect == 1:  # mine
+                elif affect == enum.affect.MINE:
                     pass
 
 
@@ -422,12 +469,7 @@ class UserShip(Ship):
 
     def __init__(self, **kwargs):
         self.name = kwargs.pop('name')
-        kwargs.setdefault('pos', self.starting_location)
+        kwargs['pos'] = Vector.rect(6, random.randrange(360) * math.pi / 180)
         super(UserShip, self).__init__(**kwargs)
-
-    @property
-    def starting_location(self):
-        return Vector.rect(6, random.randrange(360) * math.pi / 180)
-
 
 

@@ -77,24 +77,35 @@ class Game(object):
     def tick(self):
         self.tick_count = count = (self.tick_count + 1) % 24
         for obj in self.objects[:]:
-            if not obj.added:
+            if obj is None:
                 continue
-            obj.tick(count)
+            if obj.added:
+                obj.tick(count)
             if isinstance(obj, spaceobjects.UserShip):
                 view = self.online[obj.name][1]
-                view.ship_stats(*obj.view_stats())
+                if obj.dead:
+                    ship = spaceobjects.UserShip(
+                        name=obj.name, **self.spaceobject_params)
+                    self.online[obj.name] = (ship, view)
+                else:
+                    view.ship_stats(*obj.view_stats())
             invalidate = obj.invalidate
             for other, _dist in obj.get_nearby():
                 if isinstance(other, spaceobjects.UserShip):
                     view = self.online[other.name][1]
                     if invalidate:
                         render.send(view, obj)
-                    view.space_object(
-                        obj.id_,
-                        obj.pos[0], obj.pos[1], obj.direction,
-                        other is obj)
+                    if not obj.dead:
+                        view.space_object(
+                            obj.id_,
+                            obj.pos[0], obj.pos[1], obj.direction,
+                            other is obj)
+                    else:
+                        view.space_object_dead(obj.id_)
                     for effect in obj.effects:
                         view.effect(*effect)
+            if obj.dead:
+                self.objects[obj.id_] = None
 
     def command(self, user):
         return self._UserCommand(self, user)
