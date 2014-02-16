@@ -127,7 +127,9 @@ class GamePage(page.Page):
                 self.origin = (100 * x, 100 * y)
                 self.redraw = True
         elif packet == 'space_object_dead':
-            self.objects.pop(args[0]).kill()
+            dead = self.objects.pop(args[0], None)
+            if dead is not None:
+                dead.kill()
         elif packet == 'space_object_render':
             self.objects[args[0]].render(*args[1:])
         elif packet == 'effect':
