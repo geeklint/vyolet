@@ -25,7 +25,7 @@ import mainmenu
 import network
 import page
 import utils
-from modelviews import FullGridModel
+from modalviews.editship import EditShip
 from sprite import SpriteFactory
 from sprite.effectsprite import EffectSprite
 from sprite.spacesprite import SpaceSprite
@@ -69,6 +69,14 @@ class LoadingPage(page.Page):
             display.set_page(GamePage(self.nr, self.settings))
 
 
+class PNGLoader(object):
+    def __getattr__(self, name):
+        filename = '.'.join(name, 'png')
+        png = pygame.image.load(utils.ensure_res(filename)).convert()
+        setattr(self, name, png)
+        return png
+
+
 class GamePage(page.Page):
     def __init__(self, nr, settings):
         self.nr = nr
@@ -80,19 +88,16 @@ class GamePage(page.Page):
         self.size = (0, 0)
         self.stats = (1, 1, 1, 1)
         self.equiped = (0,) * 10
-        self.model = None
+        self.modal = None
         self.autopilot = True
         self.affect = 0
         self.thrust = [False, False, False, False]
         self.font = pygame.font.SysFont('monospace', 12)
-        self.bg_src = self.load_image('stars.png')
-        self.hud_src = self.load_image('hud.png')
-        self.parts_src = self.load_image('parts.png')
-        self.equip_src = self.load_image('equipment.png')
-        self.effects_src = self.load_image('effects.png')
-
-    def load_image(self, filename):
-        return pygame.image.load(utils.ensure_res(filename)).convert()
+        self.png = PNGLoader()
+        if settings['antialias']:
+            self.drawing = drawing.AADrawing()
+        else:
+            self.drawing = drawing.Drawing()
 
     @property
     def origin_x(self):
@@ -101,10 +106,9 @@ class GamePage(page.Page):
     def origin_y(self):
         return self.origin[1] - self.size[1] / 2
 
-    @property
-    def model_rect(self):
-        x = int(self.size[0] * .10)
-        y = int(self.size[1] * .10)
+    def model_rect(self, size):
+        x = int(size[0] * .10)
+        y = int(size[1] * .10)
         size = (x * 8, y * 8)
         return pygame.Rect(x, y, size[0], size[1])
 
@@ -142,74 +146,98 @@ class GamePage(page.Page):
         elif packet == 'ship_stats':
             self.stats = args
         elif packet == 'full_grid':
-            self.model = FullGridModel(args)
+            self.modal = EditShip(args)
 
     def input_click_down(self, (x, y), button):
-        if self.model:
-            pass
+        if self.modal:
+            rect = self.modal_rect(self.size)
+            if rect.collidepoint(x, y):
+                self.modal.input_click_down(
+                    (x + rect.x, y + rect.y), button)
+            else:
+                self.modal = None
         elif y > self.hud_y(self.size):
             self.hud_click_down((x, y - self.hud_y(self.size)), button)
-        else:
+        elif button == 1:
             for obj in SpaceSprite.group:
                 rect = obj.rect
                 if (rect.collidepoint(x, y)
                         and obj.mask.get_at((x - rect.x, y - rect.y))):
                     self.nr.sendp.affect(self.affect, obj.id_)
                     break
+        elif button == 3:
+            if self.autopilot:
+                self.nr.sendp.set_dest((self.origin_x + x) / 100.,
+                                       (self.origin_y + y) / 100.)
             else:
-                if self.autopilot:
-                    self.nr.sendp.set_dest((self.origin_x + x) / 100.,
-                                           (self.origin_y + y) / 100.)
-                else:
-                    offset = (self.size[0] / 2., self.size[1] / 2.)
-                    factor = max(offset)
-                    x = 0x7f * (x - offset[0]) / factor
-                    y = 0x7f * (y - offset[1]) / factor
-                    self.nr.sendp.thrust(x, y)
+                offset = (self.size[0] / 2., self.size[1] / 2.)
+                factor = max(offset)
+                x = 0x7f * (x - offset[0]) / factor
+                y = 0x7f * (y - offset[1]) / factor
+                self.nr.sendp.thrust(x, y)
 
     def input_click_up(self, (x, y), button):
-        if self.model:
-            rect = self.model_rect
+        if self.modal:
+            rect = self.modal_rect(self.size)
             if rect.collidepoint(x, y):
-                self.model.input_click_down(
-                    (x + rect.x, y + rect.y), button)
+                self.modal.input_click_up(
+                    (x - rect.x, y - rect.y), button)
             else:
-                self.model = None
+                self.modal = None
         elif y > self.hud_y(self.size):
             self.hud_click_up((x, y - self.hud_y(self.size)), button)
-        if not self.autopilot:
+        elif button == 3 and not self.autopilot:
             self.nr.sendp.thrust(0, 0)
 
+    def input_move(self, (x, y), buttons):
+        if self.modal:
+            rect = self.modal_rect(self.size)
+            x = max(rect.x, min(rect.right, x)) - rect.x
+            y = max(rect.y, min(rect.bottom, y)) - rect.y
+            self.modal.input_move((x, y), buttons)
+        elif not self.autopilot and 3 in buttons:
+            offset = (self.size[0] / 2., self.size[1] / 2.)
+            factor = max(offset)
+            x = 0x7f * (x - offset[0]) / factor
+            y = 0x7f * (y - offset[1]) / factor
+            self.nr.sendp.thrust(x, y)
+
     def input_key_down(self, key, mod, code):
-        try:
-            cmd = self.settings['keys'].index(key)
-        except ValueError:
-            pass
+        if self.modal:
+            self.modal.input_key_down(key, mod, code)
         else:
-            if cmd < 10:
-                self.nr.sendp.action(cmd)
-            elif cmd == 10:
-                self.nr.sendp.edit_ship()
-            elif cmd == 11:
+            try:
+                cmd = self.settings['keys'].index(key)
+            except ValueError:
                 pass
-            elif cmd == 12:
-                self.autopilot = not self.autopilot
-                self.nr.sendp.thrust(0, 0)
-            elif cmd == 13:
-                self.affect = int(not self.affect)
+            else:
+                if cmd < 10:
+                    self.nr.sendp.action(cmd)
+                elif cmd == 10:
+                    self.nr.sendp.edit_ship()
+                elif cmd == 11:
+                    pass
+                elif cmd == 12:
+                    self.autopilot = not self.autopilot
+                    self.nr.sendp.thrust(0, 0)
+                elif cmd == 13:
+                    self.affect = int(not self.affect)
 
     def input_key_up(self, key, mod):
-        pass
+        if self.modal:
+            self.modal.input_key_up(key, mod)
 
     def draw(self, screen, size):
         split_screen = self.split_screen(screen, size)
-        if self.model:
-            self.model_draw(screen, size)
-        elif self.redraw or size != self.size or self.settings['scroll_bg']:
+        if self.redraw or size != self.size or self.settings['scroll_bg']:
             self.redraw = False
             self.full_draw(split_screen)
         else:
             self.update_draw(split_screen)
+        if self.modal:
+            model_rect = self.modal_rect(size)
+            model_screen = screen.subsurface(model_rect)
+            self.modal.draw(self, model_screen, model_rect.size)
         pygame.display.flip()
         self.screen = screen
         self.size = size
@@ -228,10 +256,10 @@ class GamePage(page.Page):
         SpaceSprite.group.clear(screen, self.saved_bg)
         EffectSprite.group.clear(screen, self.saved_bg)
         SpaceSprite.group.draw(screen)
+        EffectSprite.group.update(screen)
         EffectSprite.group.draw(screen)
 
     def tick(self):
-        EffectSprite.group.update()
         self.draw(self.screen, self.size)
 
     #######################################
@@ -251,7 +279,7 @@ class GamePage(page.Page):
 
     def hud_draw(self, screen, size):
         width = int(size[1] * 808 / 128)
-        image = pygame.transform.smoothscale(self.hud_src, (width, size[1]))
+        image = pygame.transform.smoothscale(self.png.hud, (width, size[1]))
         self.hud_scaled = image
         self.hud_x = size[0] / 2 - width / 2
         self.hud_e_bar_t = int(79 * size[1] / 128. + 0.5)
@@ -282,22 +310,6 @@ class GamePage(page.Page):
         pass
 
     #######################################
-    # Model
-    #######################################
-
-    def model_draw(self, screen, size):
-        if self.model:
-            x = int(size[0] * .10)
-            y = int(size[1] * .10)
-            size = (x * 8, y * 8)
-            surf = pygame.Surface(size)
-            self.model.draw(self, surf, size)
-            rect = pygame.Rect(x - 5, y - 5, size[0] + 10, size[1] + 10)
-            pygame.draw.rect(screen, colors.VYOLET, rect)
-            rect = pygame.Rect(x, y, size[0], size[1])
-            screen.blit(surf, rect)
-
-    #######################################
     # Utility
     #######################################
 
@@ -312,7 +324,7 @@ class GamePage(page.Page):
             if (-1600 < pos[0] < 1600 + size[0]
                     and -900 < pos[1] < 900 + size[1]):
                 rect = pygame.Rect(pos, (1600, 900))
-                surface.blit(self.bg_src, rect)
+                surface.blit(self.png.stars, rect)
         self.saved_bg = surface
         screen.blit(surface, (0, 0))
 

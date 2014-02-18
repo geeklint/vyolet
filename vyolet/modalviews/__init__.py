@@ -15,26 +15,24 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-class enum(object):
-    pass
+class ModalView(object):
+    def __init__(self, gp):
+        self.gp = gp
 
+    def draw(self, screen, size):
+        pass
 
-class affect(enum):
-    ATTACK = 0
-    MINE = 1
+    def input_click_up(self, pos, button):
+        pass
 
+    def input_click_down(self, pos, button):
+        pass
 
-class effect(enum):
-    DOT = 1
-    LINE = 2
+    def input_move(self, pos, buttons):
+        pass
 
+    def input_key_down(self, key, mod, code):
+        pass
 
-class render(enum):
-    CLEAR = 0
-    LINE = 1
-    RECT = 2
-    CIRCLE = 3
-
-
-
-
+    def input_key_up(self, key, mod):
+        pass

@@ -188,6 +188,11 @@ class Damageable(SpaceObject):
         pass
 
 
+class Targetable(Damageable):
+    '''Class for objects which can be targeted (by ships)
+    '''
+
+
 class Mineable(SpaceObject):
     '''Class which represents an object which can be mined
     '''
@@ -219,11 +224,12 @@ class DamageSphere(SpaceObject):
         total = len(self.atmospheres)
         for atmos in sorted(self.atmospheres, reverse=True):
             alpha = int(0xff * (float(enum) / total))
-            display.extend((
-                render.disk(
+            display.append(
+                render.circle(
                     (atmos.color + (alpha,)),
                     (0, 0),
-                    atmos.size),))
+                    atmos.size,
+                    True))
             enum += 1
         return display
 
@@ -284,7 +290,7 @@ class Satallite(SpaceObject):
         self.pos = self.orbit_pos()
 
 
-class Ship(Damageable):
+class Ship(Targetable):
     def __init__(self, **kwargs):
         super(Ship, self).__init__(**kwargs)
         self.stats = defaultdict(lambda: 0.0)
@@ -418,7 +424,7 @@ class Ship(Damageable):
         if self.target:
             affect, target_id = self.target
             target_obj = self.others[target_id]
-            req_cls = {enum.affect.ATTACK: Damageable,
+            req_cls = {enum.affect.ATTACK: Targetable,
                        enum.affect.MINE: Mineable}[affect]
             if (target_obj is None
                     or self.pos.distance(target_obj.pos) > self.stats['range']
@@ -480,26 +486,25 @@ class UserShip(Ship):
         super(UserShip, self).__init__(**kwargs)
 
 
-class FloatingItem(SpaceObject):
+class FloatingItem(Damageable):
     def __init__(self, **kwargs):
         self.item_type = kwargs.pop('item_type')
         self.item = kwargs.pop('item')
         super(FloatingItem, self).__init__(**kwargs)
 
-    # don't directly inherit Damageable so we aren't targetable
     def affect_damage(self, direction, amount, dmg_type, cause):
         self.destroy()
 
     def render(self):
         display = super(FloatingItem, self).render()
         display.extend([
-            render.circle(colors.WHITE, (0, 0), 5, 1),
+            render.circle(colors.WHITE, (0, 0), 10, False),
             render.rect(colors.WHITE, (-2, -2), (4, 4))])
         return display
 
     def tick(self, count):
         super(FloatingItem, self).tick(count)
-        for obj, dist in self.get_nearby():
-            if dist < 1 and isinstance(obj, Ship):
+        for obj, _dist in self.get_nearby(.1):
+            if isinstance(obj, Ship):
                 obj.cargo[self.item_type].append(self.item)
                 self.destroy()

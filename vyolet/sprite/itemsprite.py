@@ -15,26 +15,7 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-class enum(object):
+import pygame
+
+class ItemSprite(pygame.sprite.Sprite):
     pass
-
-
-class affect(enum):
-    ATTACK = 0
-    MINE = 1
-
-
-class effect(enum):
-    DOT = 1
-    LINE = 2
-
-
-class render(enum):
-    CLEAR = 0
-    LINE = 1
-    RECT = 2
-    CIRCLE = 3
-
-
-
-

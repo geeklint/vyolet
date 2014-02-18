@@ -62,10 +62,5 @@ def rect((x, y), (width, height)):
 
 
 @renderfunc
-def circle(pos, radius, stroke):
-    return (render.CIRCLE, pos[0], pos[1], radius, stroke)
-
-
-@renderfunc
-def disk(pos, radius):
-    return (render.CIRCLE, pos[0], pos[1], radius, 0)
+def circle(pos, radius, fill):
+    return (render.CIRCLE, pos[0], pos[1], radius, float(fill))

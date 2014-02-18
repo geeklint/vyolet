@@ -18,63 +18,81 @@ This file is part of Vyolet.
 import pygame
 
 from . import RelativeSprite
-from ..utils import Vector
+from ..enum import effect
 
 # m: motioned, t: targeted, r: rotated
-EFFECTS = {
-    1: ('mt', (0, 0, 2, 2)),
-}
 
 
-class DummyTarget(object):
-    def __init__(self, x, y):
-        self.x = x
+class DummyTarget(RelativeSprite):
+    group = pygame.sprite.Group()
+    def __init__(self, x, y, origin_source):
+        super(DummyTarget, self).__init__(origin_source, self.group)
+        self.x = y
         self.y = y
 
 
-class EffectSprite(RelativeSprite):
+class EffectSprite(pygame.sprite.Sprite):
     group = pygame.sprite.RenderPlain()
 
-    mask_src = None
+    image_size = (0, 0)
+    @classmethod
+    def get_image(cls, size):
+        if size[0] > cls.image_size[0] or size[1] > cls.image_size[1]:
+            new_size = (max(size[0], cls.image_size[0]),
+                        max(size[1], cls.image_size[1]))
+            cls.image = pygame.Surface(new_size)
+            cls.image.set_colorkey((0, 0, 0))
+            cls.image.fill((0, 0, 0))
+            cls.image_size = new_size
+        rect = pygame.Rect((0, 0), size)
+        return cls.image.subsurface(rect)
 
     def __init__(self, gp, id_, cr, cg, cb, from_, tox, toy, to_obj, duration):
-        super(EffectSprite, self).__init__(gp, self.group)
-        if self.mask_src is None:
-            EffectSprite.mask_src = mask_src = gp.effects_src
-            mask_src.set_colorkey((0xff, 0xff, 0xff))
+        super(EffectSprite, self).__init__(self.group)
         try:
-            effect, box = EFFECTS[id_]
+            targeted, self.draw = EFFECTS[id_]
         except KeyError:
             self.kill()
         else:
-            self.x = from_.x
-            self.y = from_.y
-            self.motioned = 'm' in effect
-            self.rotated = 'r' in effect
-            self.target = to_obj if 't' in effect else DummyTarget(tox, toy)
-            self.original = pygame.Surface((box[2], box[3]))
-            self.original.fill((cr, cg, cb))
-            mask = self.mask_src.subsurface(pygame.Rect(*box))
-            self.original.blit(mask, (0, 0))
-            self.duration = duration
-            self.update()
-            self.rotate()
+            self.drawing = gp.drawing
+            self.color = (cr, cg, cb)
+            self.from_ = from_
+            self.to = to_obj if targeted else DummyTarget(tox, toy, gp)
+            self.remaining = self.duration = duration
 
-    def update(self):
-        self.duration -= 1
-        if not self.duration:
+    def draw(self, drawing, fx, fy, tx, ty, remaining):
+        pass
+
+    def update(self, screen):
+        self.remaining -= 1
+        if not self.remaining:
             self.kill()
         else:
-            to = Vector(self.target.x, self.target.y)
-            me = Vector(self.x, self.y)
-            if self.motioned:
-                me = me + ((to - me) / self.duration)
-                self.x = me.x
-                self.y = me.y
-            if self.rotated:
-                self.direction = (to - me).angle()
-                self.rotate()
+            drawing = self.drawing(screen).color(self.color)
+            remaining = self.remaining / float(self.duration)
+            tx, ty = self.to.rect.topleft
+            fx, fy = self.from_.rect.topleft
+            self.rect = self.draw(drawing, fx, fy, tx, ty, remaining)
+            self.image = self.get_image(self.rect.size)
 
 
+def draw_DOT(drawing, fx, fy, tx, ty, remaining):
+    print 'draw_DOT'
+    x = int((fx - tx) * remaining + tx)
+    y = int((fy - ty) * remaining + ty)
+    rect = pygame.Rect(x, y, 2, 2)
+    drawing.rect(rect)
+    return rect
 
 
+def draw_LINE(drawing, fx, fy, tx, ty, remaining):
+    drawing.line((fx, fy))
+    rect = pygame.Rect(tx, ty, fx - tx, fy - ty)
+    rect.normalize()
+    return rect
+
+
+EFFECTS = {
+    effect.DOT: (True, draw_DOT),
+    effect.LINE: (True, draw_LINE),
+}

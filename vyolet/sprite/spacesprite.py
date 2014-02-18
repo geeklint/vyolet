@@ -24,7 +24,7 @@ class SpaceSprite(RelativeSprite):
     group = pygame.sprite.RenderPlain()
     def __init__(self, id_, gp):
         super(SpaceSprite, self).__init__(gp, self.group)
-        self.gp = gp
+        self.drawing = gp.drawing
         self.id_ = id_
         self.x = self.y = 0
         self.size = [0, 0]
@@ -63,15 +63,15 @@ class SpaceSprite(RelativeSprite):
             self._resize_points(
                 (x + r, y + r), (x - r, y - r))
             dx, dy = self.box[:2]
-            pygame.draw.circle(self.original, color, (x + dx, y + dy), r, s)
+            self.drawing(
+                self.original).color(color).circle(x + dx, y + dy, r, s)
         elif cmd == render.RECT:
             x, y, width, height = args[:4]
             self._resize_points(
                 (x, y), (x + width, y + height))
             dx, dy = self.box[:2]
             rect = pygame.Rect(dx + x, dy + y, width, height)
-            print 'rect', rect
-            pygame.draw.rect(self.original, color, rect)
+            self.drawing(self.original).color(color).rect(rect)
         else:
             print 'unk cmd', cmd
         self.rotate()

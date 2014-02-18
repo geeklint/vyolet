@@ -15,26 +15,22 @@ This file is part of Vyolet.
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-class enum(object):
-    pass
+from . import ModalView
 
+class EditShip(ModalView):
+    def __init__(self, gp, items):
+        super(EditShip, self).__init__(gp)
+        self.items = items
 
-class affect(enum):
-    ATTACK = 0
-    MINE = 1
+    def draw(self, screen, size):
+        self.screen = screen
+        self.size = size
+        # item_size = min(size[0] / 17, size[1] / 13)
+        items = iter(self.items)
+        for x in xrange(17):
+            for y in xrange(13):
+                self.gp.draw_icon(
+                    screen, self.gp.png.parts, (x * 48, y * 48), next(items))
 
-
-class effect(enum):
-    DOT = 1
-    LINE = 2
-
-
-class render(enum):
-    CLEAR = 0
-    LINE = 1
-    RECT = 2
-    CIRCLE = 3
-
-
-
-
+    def input_click_down(self, (x, y), button):
+        pass
