@@ -21,6 +21,9 @@ class ModalView(object):
 
     def draw(self, screen, size):
         pass
+        
+    def recv_packet(self, packet, args):
+        pass
 
     def input_click_up(self, pos, button):
         pass

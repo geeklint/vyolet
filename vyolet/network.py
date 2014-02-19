@@ -45,13 +45,8 @@ PACKETS = [
     0x31, 'set_color', '3B',  # (r, g, b) c -> s
     0x32, 'edit_ship', 'x',  # () c -> s
     0x33, 'full_grid', '',  # (items, damage) s -> c
-    0x34, 'small_grid', 'x',  # not implemented
-    0x35, 'cargo_clear', 'x',  # () s <-> c (also, req)
-    0x36, 'cargo_item', 'HB',  # (item, damage) s -> c
-    0x37, 'do_edit', '2bHB',  # (pos,, replacewith)
-    0x38, 'engineering_clear', 'x',  # () s <-> c (also, req)
-    0x39, 'engineering_option', 'H',  # (item,) s -> c
-    0x3a, 'engineer_item', 'H',  # (item,) c -> s
+    0x34, 'req_cargo', 'BB',  # (type, page)
+    0x35, 'cargo', 'BB64I64B',  # (type, page, items...,) s <-> c (also, req)
 
     0x40, 'thrust', 'bb',  # (direction,,) c -> s
     0x41, 'set_dest', '2d',  # (dest,,) c -> s
