@@ -14,14 +14,34 @@ This file is part of Vyolet.
     You should have received a copy of the GNU General Public License
     along with Vyolet.  If not, see <http://www.gnu.org/licenses/>.
 '''
+import pygame
 
 class ModalView(object):
     def __init__(self, gp):
         self.gp = gp
 
+    def close(self):
+        self.gp.modal = None
+
+    def border(self, screen, size):
+        offset = (0, 0)
+        drawing = self.gp.drawing(screen)
+        for rgb in (0x52, 0x21, 0x00):
+            drawing = drawing.color((0, 0, 0, 0xff - rgb))
+            for _ in xrange(2 if rgb else 1):
+                size = (size[0] - 1, size[1] - 1)
+                points = [offset, (offset[0], size[1]),
+                          size, (size[0], offset[1])]
+                drawing.lines(points, True)
+                offset = (offset[0] + 1, offset[1] + 1)
+        size = (size[0] - offset[0], size[1] - offset[1])
+        screen = screen.subsurface((offset, size))
+        screen.fill((0x80, 0x80, 0x80))
+        return screen, size
+
     def draw(self, screen, size):
         pass
-        
+
     def recv_packet(self, packet, args):
         pass
 

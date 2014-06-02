@@ -70,6 +70,9 @@ class Drawing(object):
         pygame.draw.line(self.surface, self._color, spos, epos)
         return self
 
+    def lines(self, points, closed=False):
+        pygame.draw.lines(self.surface, self._color, closed, points)
+
 
 class AADrawing(Drawing):
     def __init__(self):
@@ -90,3 +93,6 @@ class AADrawing(Drawing):
     def line(self, spos, epos):
         pygame.draw.aaline(self.surface, self._color, spos, epos)
         return self
+
+    def lines(self, points, closed=False):
+        pygame.draw.aalines(self.surface, self._color, closed, points)

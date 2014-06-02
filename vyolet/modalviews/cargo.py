@@ -29,10 +29,8 @@ class Cargo(ModalView):
 
     def recv_packet(self, packet, args):
         if packet == 'cargo':
-            tab, page = args[:2]
             if args[:2] == (self.tab, self.page):
-                items, aux = args[2:66], args[66:]
-                self.items = zip(items, aux)
+                self.items = zip(args[2:66], args[66:])
 
     def draw(self, screen, size):
         screen.fill((0x80, 0x80, 0x80))

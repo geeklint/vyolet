@@ -26,6 +26,7 @@ import network
 import page
 import utils
 from modalviews.editship import EditShip
+from modalviews.settings import Settings
 from sprite import SpriteFactory
 from sprite.effectsprite import EffectSprite
 from sprite.spacesprite import SpaceSprite
@@ -71,7 +72,7 @@ class LoadingPage(page.Page):
 
 class PNGLoader(object):
     def __getattr__(self, name):
-        filename = '.'.join(name, 'png')
+        filename = '.'.join((name, 'png'))
         png = pygame.image.load(utils.ensure_res(filename)).convert()
         setattr(self, name, png)
         return png
@@ -106,7 +107,7 @@ class GamePage(page.Page):
     def origin_y(self):
         return self.origin[1] - self.size[1] / 2
 
-    def model_rect(self, size):
+    def modal_rect(self, size):
         x = int(size[0] * .10)
         y = int(size[1] * .10)
         size = (x * 8, y * 8)
@@ -214,9 +215,9 @@ class GamePage(page.Page):
                 if cmd < 10:
                     self.nr.sendp.action(cmd)
                 elif cmd == 10:
-                    self.nr.sendp.edit_ship()
+                    self.modal = Settings(self)
                 elif cmd == 11:
-                    pass
+                    self.nr.sendp.edit_ship()
                 elif cmd == 12:
                     self.autopilot = not self.autopilot
                     self.nr.sendp.thrust(0, 0)
@@ -237,7 +238,7 @@ class GamePage(page.Page):
         if self.modal:
             model_rect = self.modal_rect(size)
             model_screen = screen.subsurface(model_rect)
-            self.modal.draw(self, model_screen, model_rect.size)
+            self.modal.draw(model_screen, model_rect.size)
         pygame.display.flip()
         self.screen = screen
         self.size = size
